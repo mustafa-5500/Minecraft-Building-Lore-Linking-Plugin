@@ -1,10 +1,25 @@
-name: MinecraftTemplatePlugin
-version: '${version}'
-main: com.example.minecrafttemplateplugin.TemplatePlugin
-api-version: '1.21'
-author: YourName
-description: A starter template for Minecraft Paper plugins.
+name: BuildingLore
+version: '1.0.0'
+main: org.almond.buildinglore.BuildingLorePlugin
+api-version: '1.20'
+description: Selection wand and block data export for building-lore linking.
+authors:
+  - AlmondStafa
+
 commands:
-  template:
-    description: Template command to verify the plugin loads.
-    usage: /template
+  bl:
+    description: Building Lore selection commands
+    usage: /<command> [wand|pos1|pos2|add|remove|list|info|delete|serialize|export|import]
+    aliases:
+      - buildinglore
+
+permissions:
+  buildinglore.use:
+    description: Basic wand and selection commands
+    default: true
+  buildinglore.export:
+    description: Export block data (can be expensive for large selections)
+    default: op
+  buildinglore.admin:
+    description: Manage other players' selections
+    default: op
