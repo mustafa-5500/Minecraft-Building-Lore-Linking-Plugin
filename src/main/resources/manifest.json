@@ -1,0 +1,22 @@
+{
+    "Group": "Lands",
+    "Name": "LandsPlugin",
+    "Version": "0.0.2",
+    "Description": "Hytale Land Claiming Plugin",
+    "Authors": [
+        {
+            "Name": "AlmondStafa"
+        }
+    ],
+    "Website": "",
+    "ServerVersion": "*",
+    "Dependencies": {
+        
+    },
+    "OptionalDependencies": {
+        
+    },
+    "DisabledByDefault": false,
+    "Main": "org.almond.lands.LandsPlugin",
+    "IncludesAssetPack": true
+}
