@@ -37,3 +37,8 @@ tasks.register('copyDependencies', Copy) {
     from configurations.compileClasspath
     into layout.buildDirectory.dir('libs')
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.forkOptions.jvmArgs = ['-Xmx1g']  // Set proper JVM memory
+}
