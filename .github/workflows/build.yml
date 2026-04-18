@@ -37,8 +37,6 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew shadowJar
-        env:
-          GRADLE_OPTS: "-Xmx1024m"
 
       - name: Run Tests
         run: ./gradlew test
