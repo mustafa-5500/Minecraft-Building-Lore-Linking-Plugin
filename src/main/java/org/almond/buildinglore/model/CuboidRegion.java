@@ -39,6 +39,14 @@ public class CuboidRegion {
                this.minZ <= other.maxZ && this.maxZ >= other.minZ;
     }
 
+    /** Checks if this region fully contains another region */
+    public boolean containsRegion(CuboidRegion other) {
+        if (!this.worldName.equals(other.worldName)) return false;
+        return this.minX <= other.minX && this.maxX >= other.maxX &&
+               this.minY <= other.minY && this.maxY >= other.maxY &&
+               this.minZ <= other.minZ && this.maxZ >= other.maxZ;
+    }
+
     /** Checks if this region is adjacent (touching face-to-face) to another region */
     public boolean isAdjacentTo(CuboidRegion other) {
         if (!this.worldName.equals(other.worldName)) return false;

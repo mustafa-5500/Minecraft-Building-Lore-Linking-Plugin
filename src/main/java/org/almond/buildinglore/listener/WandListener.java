@@ -1,6 +1,7 @@
 package org.almond.buildinglore.listener;
 
 import org.almond.buildinglore.manager.SelectionManager;
+import org.almond.buildinglore.visual.SelectionVisualizer;
 import org.almond.buildinglore.util.WandUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -17,9 +18,11 @@ import org.bukkit.event.player.PlayerInteractEvent;
 public class WandListener implements Listener {
 
     private final SelectionManager selectionManager;
+    private final SelectionVisualizer visualizer;
 
-    public WandListener(SelectionManager selectionManager) {
+    public WandListener(SelectionManager selectionManager, SelectionVisualizer visualizer) {
         this.selectionManager = selectionManager;
+        this.visualizer = visualizer;
     }
 
     @EventHandler
@@ -52,6 +55,11 @@ public class WandListener implements Listener {
             if (preview != null) {
                 player.sendMessage(ChatColor.GRAY + "Selection volume: " + ChatColor.WHITE + preview.getVolume() + " blocks");
             }
+        }
+
+        // Auto-enable visualization when using the wand
+        if (!visualizer.isEnabled(player.getUniqueId())) {
+            visualizer.toggle(player.getUniqueId());
         }
     }
 }

@@ -32,9 +32,43 @@ public class Selection {
         this(UUID.randomUUID(), name, owner, worldName, new ArrayList<>(), System.currentTimeMillis());
     }
 
-    /** Add a region to this selection */
+    /**
+     * Add a region to this selection, handling overlaps.
+     * Adapted from org.almond.lands.manager.LandManager.claimRegion:
+     * - If an existing region fully contains the new one, the new region is skipped.
+     * - Existing regions fully contained by the new one are removed.
+     * - Partial overlaps are resolved by subtracting existing regions from the new one.
+     * - After adding, adjacent same-plane regions are merged.
+     */
     public void addRegion(CuboidRegion region) {
-        regions.add(region);
+        // If any existing region already fully contains the new one, nothing to add
+        for (CuboidRegion existing : regions) {
+            if (existing.containsRegion(region)) {
+                return;
+            }
+        }
+
+        // Remove any existing regions fully contained by the new region
+        regions.removeIf(existing -> region.containsRegion(existing));
+
+        // Subtract existing regions from the new region to get only the non-overlapping parts
+        // (same pattern as LandManager.claimRegion splitting newRegions via subtract)
+        Set<CuboidRegion> toAdd = new HashSet<>();
+        toAdd.add(region);
+        for (CuboidRegion existing : regions) {
+            Set<CuboidRegion> nextToAdd = new HashSet<>();
+            for (CuboidRegion piece : toAdd) {
+                if (existing.overlaps(piece)) {
+                    nextToAdd.addAll(piece.subtract(existing));
+                } else {
+                    nextToAdd.add(piece);
+                }
+            }
+            toAdd = nextToAdd;
+        }
+
+        regions.addAll(toAdd);
+        mergeRegions();
     }
 
     /** Remove a region by index (0-based) */
@@ -61,25 +95,32 @@ public class Selection {
         return false;
     }
 
-    /** Merge adjacent, same-plane regions to optimize the set */
+    /** Merge adjacent, same-plane regions to optimize the set.
+     *  Adapted from org.almond.lands.model.Land.mergeRegions.
+     *  Runs iteratively until no more merges are possible. */
     public void mergeRegions() {
-        List<CuboidRegion> merged = new ArrayList<>();
-        for (CuboidRegion region : this.regions) {
-            boolean wasMerged = false;
-            for (int i = 0; i < merged.size(); i++) {
-                CuboidRegion existing = merged.get(i);
-                if (existing.isAdjacentTo(region) && !existing.overlaps(region) && existing.isSamePlaneAs(region)) {
-                    merged.set(i, existing.merge(region));
-                    wasMerged = true;
-                    break;
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            List<CuboidRegion> merged = new ArrayList<>();
+            for (CuboidRegion region : this.regions) {
+                boolean wasMerged = false;
+                for (int i = 0; i < merged.size(); i++) {
+                    CuboidRegion existing = merged.get(i);
+                    if (existing.isAdjacentTo(region) && !existing.overlaps(region) && existing.isSamePlaneAs(region)) {
+                        merged.set(i, existing.merge(region));
+                        wasMerged = true;
+                        changed = true;
+                        break;
+                    }
+                }
+                if (!wasMerged) {
+                    merged.add(region);
                 }
             }
-            if (!wasMerged) {
-                merged.add(region);
-            }
+            this.regions.clear();
+            this.regions.addAll(merged);
         }
-        this.regions.clear();
-        this.regions.addAll(merged);
     }
 
     // --- Getters ---

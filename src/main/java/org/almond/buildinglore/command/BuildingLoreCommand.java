@@ -7,6 +7,7 @@ import org.almond.buildinglore.model.Selection;
 import org.almond.buildinglore.serializer.BlockDataExporter;
 import org.almond.buildinglore.serializer.RegionSerializer;
 import org.almond.buildinglore.util.WandUtil;
+import org.almond.buildinglore.visual.SelectionVisualizer;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -29,13 +30,15 @@ public class BuildingLoreCommand implements TabExecutor {
     private final JavaPlugin plugin;
     private final SelectionManager selectionManager;
     private final SelectionStorageManager storageManager;
+    private final SelectionVisualizer visualizer;
 
     private static final String PREFIX = ChatColor.DARK_AQUA + "[BuildingLore] " + ChatColor.RESET;
 
-    public BuildingLoreCommand(JavaPlugin plugin, SelectionManager selectionManager, SelectionStorageManager storageManager) {
+    public BuildingLoreCommand(JavaPlugin plugin, SelectionManager selectionManager, SelectionStorageManager storageManager, SelectionVisualizer visualizer) {
         this.plugin = plugin;
         this.selectionManager = selectionManager;
         this.storageManager = storageManager;
+        this.visualizer = visualizer;
     }
 
     @Override
@@ -64,6 +67,7 @@ public class BuildingLoreCommand implements TabExecutor {
             case "serialize" -> handleSerialize(player, args);
             case "export" -> handleExport(player, args);
             case "import" -> handleImport(player, args);
+            case "viz" -> handleViz(player);
             default -> sendHelp(player);
         }
         return true;
@@ -304,6 +308,19 @@ public class BuildingLoreCommand implements TabExecutor {
         }
     }
 
+    private void handleViz(Player player) {
+        if (!player.hasPermission("buildinglore.use")) {
+            player.sendMessage(PREFIX + ChatColor.RED + "No permission.");
+            return;
+        }
+        boolean nowEnabled = visualizer.toggle(player.getUniqueId());
+        if (nowEnabled) {
+            player.sendMessage(PREFIX + ChatColor.GREEN + "Selection visualization enabled.");
+        } else {
+            player.sendMessage(PREFIX + ChatColor.YELLOW + "Selection visualization disabled.");
+        }
+    }
+
     // ---- Helpers ----
 
     private void showPreview(Player player) {
@@ -329,6 +346,7 @@ public class BuildingLoreCommand implements TabExecutor {
         player.sendMessage(ChatColor.YELLOW + "  /bl serialize <name>" + ChatColor.GRAY + " — Get a text token for a selection");
         player.sendMessage(ChatColor.YELLOW + "  /bl export <name>" + ChatColor.GRAY + " — Export block data to file");
         player.sendMessage(ChatColor.YELLOW + "  /bl import <token>" + ChatColor.GRAY + " — Import a selection from a token");
+        player.sendMessage(ChatColor.YELLOW + "  /bl viz" + ChatColor.GRAY + " — Toggle selection particle visualization");
     }
 
     // ---- Tab completion ----
@@ -338,7 +356,7 @@ public class BuildingLoreCommand implements TabExecutor {
         if (!(sender instanceof Player player)) return Collections.emptyList();
 
         if (args.length == 1) {
-            List<String> subs = List.of("wand", "pos1", "pos2", "add", "remove", "list", "info", "delete", "serialize", "export", "import");
+            List<String> subs = List.of("wand", "pos1", "pos2", "add", "remove", "list", "info", "delete", "serialize", "export", "import", "viz");
             return subs.stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase()))
                 .collect(Collectors.toList());
