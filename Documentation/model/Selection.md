@@ -1,5 +1,4 @@
-# Selection.java
-[[Selection.java]]
+# [Selection.java](../../src/main/java/org/almond/buildinglore/model/Selection.java)
 
 A named set of `CuboidRegion` objects belonging to a player. Handles overlap resolution when adding regions: existing regions fully contained by the new one are removed, regions fully containing the new one cause it to be skipped, and partial overlaps are resolved via subtraction. Adjacent same-plane regions are automatically merged after each addition. Adapted from `org.almond.lands.model.Land` (stripped of permissions/roles).
 
@@ -12,13 +11,13 @@ A named set of `CuboidRegion` objects belonging to a player. Handles overlap res
 - `createdAt` — Timestamp of creation
 
 **Functions:**
-[[constructors]]
-[[addRegion]]
-[[removeRegion]]
-[[getTotalVolume]]
-[[containsBlock]]
-[[mergeRegions]]
-[[getters]]
+- [constructors](#selection-constructors)
+- [addRegion](#addregion)
+- [removeRegion](#removeregion)
+- [getTotalVolume](#gettotalvolume)
+- [containsBlock](#containsblock)
+- [mergeRegions](#mergeregions)
+- [getters](#getters)
 
 ---
 
@@ -161,3 +160,8 @@ public int getRegionCount()
 
 ### Description
 Accessors for the selection's fields. `getRegions()` returns the internal list (not a copy). `getRegionCount()` is a convenience for `getRegions().size()`.
+
+## See Also:
+- [SelectionManager](../manager/SelectionManager.md)
+- [WandListener](../listener/WandListener.md)
+- [CuboidRegion](../model/CuboidRegion.md)

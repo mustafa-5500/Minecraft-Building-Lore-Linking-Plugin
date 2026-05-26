@@ -1,0 +1,1 @@
+Draws particles outlines of the selections that are a set radius around the player. 

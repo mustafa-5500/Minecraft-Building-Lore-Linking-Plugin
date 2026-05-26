@@ -1,11 +1,10 @@
-# RegionSerializer.java
-[[RegionSerializer.java]]
+# [RegionSerializer.java](../../src/main/java/org/almond/buildinglore/serializer/RegionSerializer.java)
 
 Converts a `Selection` to and from a compact text token for embedding in documents or sharing between players. Uses the format `[BL:world_name|x1,y1,z1>x2,y2,z2|...]` where each pipe-delimited segment after the world name represents a region's min and max corners.
 
 **Functions:**
-[[serialize]]
-[[deserialize]]
+- [serialize](#serialize)
+- [deserialize](#deserialize)
 
 ---
 
@@ -54,3 +53,6 @@ Parses a `[BL:...]` text token back into a `Selection` object. The selection is 
 
 ### Throws
 `IllegalArgumentException` — if the token format is invalid.
+
+## See Also:
+- [Selection](../model/Selection.md)

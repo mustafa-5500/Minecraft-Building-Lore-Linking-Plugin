@@ -1,5 +1,4 @@
-# BuildingLoreCommand.java
-[[BuildingLoreCommand.java]]
+# [BuildingLoreCommand.java](../../src/main/java/org/almond/buildinglore/command/BuildingLoreCommand.java)
 
 The command handler for the `/bl` command tree. Implements `TabExecutor` to handle both command execution and tab completion. Routes subcommands to individual handler methods for wand management, selection manipulation, serialization, export/import, and visualization toggling.
 
@@ -11,20 +10,20 @@ The command handler for the `/bl` command tree. Implements `TabExecutor` to hand
 - `PREFIX` — Chat message prefix for consistent formatting
 
 **Functions:**
-[[onCommand]]
-[[handleWand]]
-[[handlePos]]
-[[handleAdd]]
-[[handleRemove]]
-[[handleList]]
-[[handleInfo]]
-[[handleDelete]]
-[[handleSerialize]]
-[[handleExport]]
-[[handleImport]]
-[[showPreview]]
-[[sendHelp]]
-[[onTabComplete]]
+- [onCommand](#oncommand)
+- [handleWand](#handlewand)
+- [handlePos](#handlepos1--handlepos2)
+- [handleAdd](#handleadd)
+- [handleRemove](#handleremove)
+- [handleList](#handlelist)
+- [handleInfo](#handleinfo)
+- [handleDelete](#handledelete)
+- [handleSerialize](#handleserialize)
+- [handleExport](#handleexport)
+- [handleImport](#handleimport)
+- [showPreview](#showpreview)
+- [sendHelp](#sendhelp)
+- [onTabComplete](#ontabcomplete)
 
 ---
 
@@ -254,3 +253,10 @@ Provides tab completion suggestions. For the first argument, suggests all subcom
 
 ### Returns
 `List<String>` — filtered suggestions matching the partial input.
+
+## See Also:
+- [BuildingLorePlugin](../BuildingLorePlugin.md)
+- [SelectionManager](../manager/SelectionManager.md)
+- [SelectionStorageManager](../manager/SelectionStorageManager.md)
+- [Selection](../model/Selection.md)
+- [CuboidRegion](../model/CuboidRegion.md)

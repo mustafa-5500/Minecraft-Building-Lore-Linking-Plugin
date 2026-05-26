@@ -1,0 +1,1 @@
+Manages every players selection state when making selection with the wand. Has two hash maps keeping track of each corner for each player currently in the selection mode.

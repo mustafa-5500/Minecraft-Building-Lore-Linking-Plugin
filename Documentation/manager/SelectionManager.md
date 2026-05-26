@@ -1,5 +1,4 @@
-# SelectionManager.java
-[[SelectionManager.java]]
+# [SelectionManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionManager.java)
 
 Manages per-player selection state for building cuboid regions with the wand. Stores two corner locations per player in memory (not persisted) and provides methods to build a `CuboidRegion` from them. Adapted from `org.almond.lands.manager.SelectionManager`.
 
@@ -8,13 +7,13 @@ Manages per-player selection state for building cuboid regions with the wand. St
 - `corner2` — Map of player UUID → second corner `Location`
 
 **Functions:**
-[[setCorner1]]
-[[setCorner2]]
-[[getCorners]]
-[[hasCompleteSelection]]
-[[buildRegion]]
-[[peekRegion]]
-[[clearSelection]]
+- [setCorner1](#setcorner1)
+- [setCorner2](#setcorner2)
+- [getCorners](#getcorner1--getcorner2)
+- [hasCompleteSelection](#hascompleteselection)
+- [buildRegion](#buildregion)
+- [peekRegion](#peekregion)
+- [clearSelection](#clearselection)
 
 ---
 
@@ -158,3 +157,8 @@ Removes both stored corners for the given player.
 
 ### Returns
 `void`
+
+## See Also:
+- [BuildingLorePlugin](../BuildingLorePlugin.md)
+- [Selection](../model/Selection.md)
+- [CuboidRegion](../model/CuboidRegion.md)

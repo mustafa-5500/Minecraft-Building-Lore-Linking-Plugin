@@ -1,11 +1,10 @@
-# BlockDataExporter.java
-[[BlockDataExporter.java]]
+# [BlockDataExporter.java](../../src/main/java/org/almond/buildinglore/serializer/BlockDataExporter.java)
 
 Reads actual block data from the Bukkit world within a `Selection`'s regions and outputs structured text suitable for model training. Each block is recorded with its coordinates, type, and block state. Air blocks can optionally be skipped.
 
 **Functions:**
-[[export]]
-[[exportToFile]]
+- [export](#export)
+- [exportToFile](#exporttofile)
 
 ---
 
@@ -59,3 +58,6 @@ Convenience method that calls `export()` and writes the result to a text file at
 
 ### Throws
 `IOException` — if the file cannot be written.
+
+## See Also:
+- [Selection](../model/Selection.md)

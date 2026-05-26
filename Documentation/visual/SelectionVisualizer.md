@@ -1,5 +1,4 @@
-# SelectionVisualizer.java
-[[SelectionVisualizer.java]]
+# [SelectionVisualizer.java](../../src/main/java/org/almond/buildinglore/visual/SelectionVisualizer.java)
 
 Draws particle outlines around a player's current wand selection. Uses a repeating Bukkit scheduler task to render colored dust particles along the 12 edges of the selected cuboid at a configurable spacing. The task only runs when at least one player has visualization enabled, and automatically stops when all players disable it.
 
@@ -14,11 +13,11 @@ Draws particle outlines around a player's current wand selection. Uses a repeati
 - `task` — The repeating `BukkitTask` handle, or null if not running
 
 **Functions:**
-[[constructor]]
-[[toggle]]
-[[isEnabled]]
-[[disable]]
-[[shutdown]]
+- [constructor](#selectionvisualizer-constructor)
+- [toggle](#toggle)
+- [isEnabled](#isenabled)
+- [disable](#disable)
+- [shutdown](#shutdown)
 
 ---
 

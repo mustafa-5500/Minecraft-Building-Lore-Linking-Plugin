@@ -1,5 +1,4 @@
-# SelectionStorageManager.java
-[[SelectionStorageManager.java]]
+# [SelectionStorageManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionStorageManager.java)
 
 Persists `Selection` objects as YAML files under `plugins/BuildingLore/selections/<player-uuid>/`. Maintains an in-memory cache keyed by owner UUID and selection name for fast lookups, with disk I/O for durability.
 
@@ -9,13 +8,13 @@ Persists `Selection` objects as YAML files under `plugins/BuildingLore/selection
 - `cache` — In-memory cache mapping owner UUID → (selection name → Selection)
 
 **Functions:**
-[[constructor]]
-[[saveSelection]]
-[[loadSelection]]
-[[loadAllForPlayer]]
-[[deleteSelection]]
-[[getSelection]]
-[[loadFromFile]]
+- [constructor](#selectionstoragemanager-constructor)
+- [saveSelection](#saveselection)
+- [loadSelection](#loadselection)
+- [loadAllForPlayer](#loadallforplayer)
+- [deleteSelection](#deleteselection)
+- [getSelection](#getselection)
+- [loadFromFile](#loadfromfile)
 
 ---
 
@@ -157,3 +156,7 @@ Internal method that reads a YAML file and reconstructs a `Selection` object. Pa
 
 ### Returns
 `Selection` or `null` — the parsed selection, or `null` if parsing failed.
+
+## See Also:
+- [BuildingLorePlugin](../BuildingLorePlugin.md)
+- [Selection](../model/Selection.md)

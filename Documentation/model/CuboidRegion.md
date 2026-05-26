@@ -1,5 +1,4 @@
-# CuboidRegion.java
-[[CuboidRegion.java]]
+# [CuboidRegion.java](../../src/main/java/org/almond/buildinglore/model/CuboidRegion.java)
 
 An immutable cuboid region defined by two corners (min and max block coordinates) within a named world. Corners are automatically normalized to min/max on construction. Provides spatial operations including containment checks, overlap detection, adjacency testing, merging, intersection, and subtraction. Adapted from `org.almond.lands.model.Region`.
 
@@ -9,19 +8,19 @@ An immutable cuboid region defined by two corners (min and max block coordinates
 - `maxX`, `maxY`, `maxZ` — Maximum corner coordinates
 
 **Functions:**
-[[constructor]]
-[[contains]]
-[[overlaps]]
-[[isAdjacentTo]]
-[[isSamePlaneAs]]
-[[merge]]
-[[intersection]]
-[[subtract]]
-[[getVolume]]
-[[toString]]
-[[fromString]]
-[[equals_hashCode]]
-[[getters]]
+- [constructor](#cuboidregion-constructor)
+- [contains](#contains)
+- [overlaps](#overlaps)
+- [isAdjacentTo](#isadjacentto)
+- [isSamePlaneAs](#issameplaneas)
+- [merge](#merge)
+- [intersection](#intersection)
+- [subtract](#subtract)
+- [getVolume](#getvolume)
+- [toString](#tostring)
+- [fromString](#fromstring)
+- [equals_hashCode](#equals--hashcode)
+- [getters](#getters)
 
 ---
 
@@ -291,3 +290,9 @@ public int getMaxZ()
 
 ### Description
 Accessors for the region's immutable fields: world name and the six normalized corner coordinates.
+
+## See Also:
+- [Selection](./Selection.md)
+- [SelectionManager](../manager/SelectionManager.md)
+- [WandListener](../listener/WandListener.md)
+- [BuildingLoreCommand](../command/BuildingLoreCommand.md)

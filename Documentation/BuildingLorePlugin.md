@@ -1,19 +1,17 @@
-# BuildingLorePlugin.java
-[[BuildingLorePLugin.java]]
+# [BuildingLorePlugin.java](../src/main/java/org/almond/buildinglore/BuildingLorePlugin.java)
 
 The point of entry for the plugin, where the plugin object is initialized and enabled.
 
 **Functions:**
-[[getSelectionManager]]
-[[getStorageManager]]
-[[onDisable]]
-[[onEnable]]
+- [getSelectionManager](#getselectionmanager)
+- [getStorageManager](#getstoragemanager)
+- [onDisable](#ondisable)
+- [onEnable](#onenable)
 
 ---
 
 ## getSelectionManager
 
-[[BuildingLorePlugin.java]]
 ### Signature
 ```java
 public SelectionManager getSelectionManager()
@@ -26,7 +24,8 @@ Returns the plugin's `SelectionManager` instance, which tracks per-player wand c
 None.
 
 ### Returns
-`SelectionManager` — the shared selection manager. [[SelectionManager]]
+`SelectionManager` — the shared selection manager.\
+[SelectionManager](./manager/SelectionManager.md)
 
 ---
 
@@ -44,7 +43,8 @@ Returns the plugin's `SelectionStorageManager` instance, which handles persistin
 None.
 
 ### Returns
-`SelectionStorageManager` — the shared storage manager.[[SelectionStorageManager]]
+`SelectionStorageManager` — the shared storage manager.
+[SelectionStorageManager](./manager/SelectionStorageManager.md)
 
 ---
 
@@ -76,14 +76,18 @@ public void onEnable()
 ```
 
 ### Description
-Called by the server when the plugin is enabled. Initializes the `SelectionManager` and `SelectionStorageManager`, registers the `WandListener` for player interaction events, and binds the `BuildingLoreCommand` as executor and tab completer for the `/bl` command.
-[[SelectionManager]]
-[[SelectionStorageManager]]
-[[WandListener]]
-[[BuildingLoreCommand]]
+Called by the server when the plugin is enabled. Initializes the `SelectionManager` and `SelectionStorageManager`, registers the `WandListener` for player interaction events, and binds the `BuildingLoreCommand` as executor and tab completer for the `/bl` command.\
+[SelectionManager](./manager/SelectionManager.md)\
+[SelectionStorageManager](./manager/SelectionStorageManager.md)\
+[WandListener](./listener/WandListener.md)\
+[BuildingLoreCommand](./command/BuildingLoreCommand.md)
 
 ### Parameters
 None.
 
 ### Returns
 `void`
+
+## See Also:
+- [SelectionManager](./manager/SelectionManager.md)
+- [SelectionStorageManager](./manager/SelectionStorageManager.md)
