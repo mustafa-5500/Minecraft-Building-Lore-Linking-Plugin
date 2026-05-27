@@ -10,7 +10,9 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 import org.almond.buildinglore.model.CuboidRegion;
+import org.almond.buildinglore.model.LoreDocument;
 import org.almond.buildinglore.model.Selection;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -51,6 +53,15 @@ public class SelectionStorageManager {
             regionStrings.add(region.toString());
         }
         config.set("regions", regionStrings);
+
+        // Save lore documents
+        for (Map.Entry<String, LoreDocument> entry : selection.getLoreDocuments().entrySet()) {
+            LoreDocument doc = entry.getValue();
+            String path = "lore." + doc.getName();
+            config.set(path + ".id", doc.getId().toString());
+            config.set(path + ".createdAt", doc.getCreatedAt());
+            config.set(path + ".entries", doc.getEntries());
+        }
 
         try {
             config.save(file);
@@ -132,6 +143,22 @@ public class SelectionStorageManager {
             }
 
             Selection selection = new Selection(id, name, owner, world, regions, createdAt);
+
+            // Load lore documents
+            ConfigurationSection loreSection = config.getConfigurationSection("lore");
+            if (loreSection != null) {
+                for (String docName : loreSection.getKeys(false)) {
+                    ConfigurationSection docSection = loreSection.getConfigurationSection(docName);
+                    if (docSection != null) {
+                        UUID docId = UUID.fromString(docSection.getString("id"));
+                        long docCreatedAt = docSection.getLong("createdAt");
+                        List<String> entries = docSection.getStringList("entries");
+                        LoreDocument doc = new LoreDocument(docId, docName, entries, docCreatedAt);
+                        selection.addLoreDocument(doc);
+                    }
+                }
+            }
+
             cache.computeIfAbsent(owner, k -> new HashMap<>()).put(name, selection);
             return selection;
         } catch (Exception e) {

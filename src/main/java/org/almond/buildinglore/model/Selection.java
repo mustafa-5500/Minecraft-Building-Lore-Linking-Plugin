@@ -1,8 +1,10 @@
 package org.almond.buildinglore.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -16,6 +18,7 @@ public class Selection {
     private final UUID owner;
     private final String worldName;
     private final List<CuboidRegion> regions;
+    private final Map<String, LoreDocument> loreDocuments;
     private final long createdAt;
 
     public Selection(UUID id, String name, UUID owner, String worldName, List<CuboidRegion> regions, long createdAt) {
@@ -24,6 +27,7 @@ public class Selection {
         this.owner = owner;
         this.worldName = worldName;
         this.regions = new ArrayList<>(regions);
+        this.loreDocuments = new HashMap<>();
         this.createdAt = createdAt;
     }
 
@@ -121,6 +125,23 @@ public class Selection {
             this.regions.clear();
             this.regions.addAll(merged);
         }
+    }
+
+    // --- Lore Documents ---
+    public void addLoreDocument(LoreDocument doc) {
+        loreDocuments.put(doc.getName(), doc);
+    }
+
+    public LoreDocument getLoreDocument(String name) {
+        return loreDocuments.get(name);
+    }
+
+    public boolean removeLoreDocument(String name) {
+        return loreDocuments.remove(name) != null;
+    }
+
+    public Map<String, LoreDocument> getLoreDocuments() {
+        return loreDocuments;
     }
 
     // --- Getters ---

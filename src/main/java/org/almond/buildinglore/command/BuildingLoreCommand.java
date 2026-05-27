@@ -1,8 +1,10 @@
 package org.almond.buildinglore.command;
 
+import org.almond.buildinglore.manager.LoreDocumentManager;
 import org.almond.buildinglore.manager.SelectionManager;
 import org.almond.buildinglore.manager.SelectionStorageManager;
 import org.almond.buildinglore.model.CuboidRegion;
+import org.almond.buildinglore.model.LoreDocument;
 import org.almond.buildinglore.model.Selection;
 import org.almond.buildinglore.serializer.BlockDataExporter;
 import org.almond.buildinglore.serializer.RegionSerializer;
@@ -31,14 +33,16 @@ public class BuildingLoreCommand implements TabExecutor {
     private final SelectionManager selectionManager;
     private final SelectionStorageManager storageManager;
     private final SelectionVisualizer visualizer;
+    private final LoreDocumentManager loreManager;
 
     private static final String PREFIX = ChatColor.DARK_AQUA + "[BuildingLore] " + ChatColor.RESET;
 
-    public BuildingLoreCommand(JavaPlugin plugin, SelectionManager selectionManager, SelectionStorageManager storageManager, SelectionVisualizer visualizer) {
+    public BuildingLoreCommand(JavaPlugin plugin, SelectionManager selectionManager, SelectionStorageManager storageManager, SelectionVisualizer visualizer, LoreDocumentManager loreManager) {
         this.plugin = plugin;
         this.selectionManager = selectionManager;
         this.storageManager = storageManager;
         this.visualizer = visualizer;
+        this.loreManager = loreManager;
     }
 
     @Override
@@ -68,6 +72,7 @@ public class BuildingLoreCommand implements TabExecutor {
             case "export" -> handleExport(player, args);
             case "import" -> handleImport(player, args);
             case "viz" -> handleViz(player);
+            case "lore" -> handleLore(player, args);
             default -> sendHelp(player);
         }
         return true;
@@ -308,6 +313,105 @@ public class BuildingLoreCommand implements TabExecutor {
         }
     }
 
+    private void handleLore(Player player, String[] args) {
+        if (!player.hasPermission("buildinglore.use")) {
+            player.sendMessage(PREFIX + ChatColor.RED + "No permission.");
+            return;
+        }
+        if (args.length < 3) {
+            sendLoreHelp(player);
+            return;
+        }
+
+        String action = args[1].toLowerCase();
+        String selectionName = args[2];
+
+        Selection selection = storageManager.getSelection(player.getUniqueId(), selectionName);
+        if (selection == null) {
+            player.sendMessage(PREFIX + ChatColor.RED + "Selection '" + selectionName + "' not found.");
+            return;
+        }
+
+        switch (action) {
+            case "add" -> {
+                // Prompt player to type a name in chat
+                loreManager.startNaming(player.getUniqueId(), selectionName);
+                player.sendMessage(PREFIX + "Type the name for your new lore document in chat:");
+                player.sendMessage(PREFIX + ChatColor.GRAY + "(Type " + ChatColor.YELLOW + "cancel" + ChatColor.GRAY + " to abort)");
+            }
+            case "write" -> {
+                if (args.length < 4) {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Usage: /bl lore write <selection> <document>");
+                    return;
+                }
+                String docName = args[3];
+                LoreDocument doc = selection.getLoreDocument(docName);
+                if (doc == null) {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Lore document '" + docName + "' not found in '" + selectionName + "'.");
+                    return;
+                }
+                loreManager.startWriting(player.getUniqueId(), selectionName, docName);
+                player.sendMessage(PREFIX + "Now writing to " + ChatColor.GREEN + docName + ChatColor.RESET + ". Type your lore text in chat:");
+                player.sendMessage(PREFIX + ChatColor.GRAY + "Type " + ChatColor.YELLOW + "done" + ChatColor.GRAY + " to finish, or " + ChatColor.YELLOW + "cancel" + ChatColor.GRAY + " to abort.");
+            }
+            case "list" -> {
+                var docs = selection.getLoreDocuments();
+                if (docs.isEmpty()) {
+                    player.sendMessage(PREFIX + "Selection '" + selectionName + "' has no lore documents.");
+                    return;
+                }
+                player.sendMessage(PREFIX + ChatColor.AQUA + "Lore Documents in '" + selectionName + "':");
+                for (LoreDocument doc : docs.values()) {
+                    player.sendMessage(ChatColor.GREEN + "  " + doc.getName() +
+                            ChatColor.GRAY + " — " + doc.getEntryCount() + " entries");
+                }
+            }
+            case "read" -> {
+                if (args.length < 4) {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Usage: /bl lore read <selection> <document>");
+                    return;
+                }
+                String docName = args[3];
+                LoreDocument doc = selection.getLoreDocument(docName);
+                if (doc == null) {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Lore document '" + docName + "' not found in '" + selectionName + "'.");
+                    return;
+                }
+                player.sendMessage(PREFIX + ChatColor.AQUA + "=== " + doc.getName() + " ===");
+                if (doc.getEntries().isEmpty()) {
+                    player.sendMessage(ChatColor.GRAY + "  (empty)");
+                } else {
+                    for (int i = 0; i < doc.getEntries().size(); i++) {
+                        player.sendMessage(ChatColor.WHITE + "  " + doc.getEntries().get(i));
+                    }
+                }
+            }
+            case "delete" -> {
+                if (args.length < 4) {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Usage: /bl lore delete <selection> <document>");
+                    return;
+                }
+                String docName = args[3];
+                if (selection.removeLoreDocument(docName)) {
+                    storageManager.saveSelection(selection);
+                    player.sendMessage(PREFIX + "Lore document " + ChatColor.GREEN + docName + ChatColor.RESET + " deleted.");
+                } else {
+                    player.sendMessage(PREFIX + ChatColor.RED + "Lore document '" + docName + "' not found in '" + selectionName + "'.");
+                }
+            }
+            default -> sendLoreHelp(player);
+        }
+    }
+
+    private void sendLoreHelp(Player player) {
+        player.sendMessage(PREFIX + ChatColor.AQUA + "Lore Commands:");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore add <selection>" + ChatColor.GRAY + " — Create a new lore document (prompts for name)");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore write <selection> <doc>" + ChatColor.GRAY + " — Add text to a lore document");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore list <selection>" + ChatColor.GRAY + " — List lore documents in a selection");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore read <selection> <doc>" + ChatColor.GRAY + " — Read a lore document");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore delete <selection> <doc>" + ChatColor.GRAY + " — Delete a lore document");
+    }
+
     private void handleViz(Player player) {
         if (!player.hasPermission("buildinglore.use")) {
             player.sendMessage(PREFIX + ChatColor.RED + "No permission.");
@@ -347,6 +451,7 @@ public class BuildingLoreCommand implements TabExecutor {
         player.sendMessage(ChatColor.YELLOW + "  /bl export <name>" + ChatColor.GRAY + " — Export block data to file");
         player.sendMessage(ChatColor.YELLOW + "  /bl import <token>" + ChatColor.GRAY + " — Import a selection from a token");
         player.sendMessage(ChatColor.YELLOW + "  /bl viz" + ChatColor.GRAY + " — Toggle selection particle visualization");
+        player.sendMessage(ChatColor.YELLOW + "  /bl lore <add|write|list|read|delete> ..." + ChatColor.GRAY + " — Manage lore documents");
     }
 
     // ---- Tab completion ----
@@ -356,7 +461,7 @@ public class BuildingLoreCommand implements TabExecutor {
         if (!(sender instanceof Player player)) return Collections.emptyList();
 
         if (args.length == 1) {
-            List<String> subs = List.of("wand", "pos1", "pos2", "add", "remove", "list", "info", "delete", "serialize", "export", "import", "viz");
+            List<String> subs = List.of("wand", "pos1", "pos2", "add", "remove", "list", "info", "delete", "serialize", "export", "import", "viz", "lore");
             return subs.stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase()))
                 .collect(Collectors.toList());
@@ -364,12 +469,44 @@ public class BuildingLoreCommand implements TabExecutor {
 
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
+            if (sub.equals("lore")) {
+                List<String> loreActions = List.of("add", "write", "list", "read", "delete");
+                return loreActions.stream()
+                    .filter(s -> s.startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
             if (List.of("add", "remove", "info", "delete", "serialize", "export").contains(sub)) {
                 // Suggest selection names
                 return storageManager.loadAllForPlayer(player.getUniqueId()).stream()
                     .map(Selection::getName)
                     .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
                     .collect(Collectors.toList());
+            }
+        }
+
+        if (args.length == 3) {
+            String sub = args[0].toLowerCase();
+            if (sub.equals("lore")) {
+                // Suggest selection names for lore subcommands
+                return storageManager.loadAllForPlayer(player.getUniqueId()).stream()
+                    .map(Selection::getName)
+                    .filter(n -> n.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+
+        if (args.length == 4) {
+            String sub = args[0].toLowerCase();
+            String loreAction = args[1].toLowerCase();
+            if (sub.equals("lore") && List.of("write", "read", "delete").contains(loreAction)) {
+                // Suggest lore document names
+                String selName = args[2];
+                Selection sel = storageManager.getSelection(player.getUniqueId(), selName);
+                if (sel != null) {
+                    return sel.getLoreDocuments().keySet().stream()
+                        .filter(n -> n.toLowerCase().startsWith(args[3].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
             }
         }
 
