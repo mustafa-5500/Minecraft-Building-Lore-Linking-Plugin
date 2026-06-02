@@ -247,9 +247,16 @@ Produces the API reference Markdown file content.
 
 **Template Structure:**
 ```
-# [FileName.java](relative/path/to/source)
+# ClassName
+
+> **Software Detailed Documentation:** [ClassName_SDD.md](./ClassName_SDD.md)
+> **Source File:** [FileName.java](relative/path/to/source)
 
 [Description or TODO placeholder]
+
+---
+
+## Table of Contents
 
 **Fields:**
 - `fieldName` ([`Type`](path/to/Type.md)) — TODO: describe field
@@ -283,6 +290,8 @@ TODO: ...
 
 - **Software Detailed Design:** [ClassName_SDD.md](./ClassName_SDD.md)
 ```
+
+**Header generation:** The top block is produced by `build_api_header()`, which standardizes the title and the two metadata links.
 
 **Ordering:** Public methods are listed first in the table of contents, followed by private/protected methods. Duplicate names are deduplicated in the TOC.
 
@@ -355,19 +364,22 @@ Parses an existing SDD `_SDD.md` file and extracts documented method information
 | `last_section_num` | `int` | Highest section number found |
 | `lines` | `list` | All lines as a list |
 
-### 7.3 `merge_api_doc(existing_path, class_info, type_doc_map, doc_dir) → str | None`
+### 7.3 `merge_api_doc(existing_path, class_info, type_doc_map, doc_dir, relative_source_path) → str | None`
 
 Merges new methods and fields into an existing API doc.
 
 **Algorithm:**
 1. Parse the existing doc to find already-documented methods and fields
-2. Identify new methods/fields present in source but missing from docs
-3. If nothing new, return `None` (no changes needed)
-4. Insert new fields after the last existing field entry
-5. Insert new TOC entries after the last existing TOC line (deduplicated)
-6. Extract the See Also section (if present) from its current position
-7. Append new method sections (via `generate_api_method_section`)
-8. Re-append See Also at the very end with clean separator handling
+2. Normalize the top API header via `normalize_api_header(...)` so legacy docs are rewritten to the current header format
+3. Identify new methods/fields present in source but missing from docs
+4. If nothing new and the header is already current, return `None`
+5. Insert new fields after the last existing field entry
+6. Insert new TOC entries after the last existing TOC line (deduplicated)
+7. Extract the See Also section (if present) from its current position
+8. Append new method sections (via `generate_api_method_section`)
+9. Re-append See Also at the very end with clean separator handling
+
+This is why existing API docs can be updated even when no new methods were added: the merge step now also serves as the migration path for the API header format.
 
 ### 7.4 `merge_sdd_doc(existing_path, class_info) → str | None`
 
@@ -431,6 +443,7 @@ Computes the relative path from a documentation file's directory to the correspo
 |----------|-----------|
 | Regex-based parsing (not AST) | Zero external dependencies; sufficient for signature extraction without needing a full Java parser |
 | Merge-by-default behavior | Prevents accidental loss of manually-written documentation while keeping docs in sync with source |
+| Normalized API header helper | Keeps newly generated and previously existing API docs on the same top-level format |
 | Inline type linking as a final pass | Decouples link generation from template logic; applies uniformly to all output paths (generate, merge, re-linkify) |
 | Type map built from source tree (not docs) | Ensures types are discovered even before their docs exist; the map reflects project structure |
 | See Also always at end | Enforced during merge — prevents the section from being stranded mid-document after methods are appended |

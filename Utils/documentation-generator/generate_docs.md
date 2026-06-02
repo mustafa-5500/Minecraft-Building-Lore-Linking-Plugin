@@ -1,5 +1,8 @@
 # generate_docs.py
 
+> **Software Detailed Documentation:** [generate_docs_SDD.md](./generate_docs_SDD.md)  
+> **Source File:** [generate_docs.py](./generate_docs.py)
+
 A Python script that automatically generates template documentation files from Java source code. It parses `.java` files and produces both API reference (`.md`) and Software Detailed Design (`_SDD.md`) templates mirroring the source folder structure.
 
 ---
@@ -49,10 +52,12 @@ The script produces two files per Java source file:
 ### `[ClassName].md` — API Documentation
 
 Contains:
-- **Title** — Linked to the source file with a relative path
+- **Title** — Plain class name heading (for example, `# WandUtil`)
+- **Header** — Top links to the corresponding SDD doc and source file
 - **Description** — Extracted from class-level Javadoc, or a `TODO` placeholder
+- **Table of Contents** — Dedicated section containing fields and function links
 - **Fields** — List of class fields with type links to corresponding API docs
-- **Functions** — Table of contents with anchor links to each method
+- **Functions** — In-page links to each method section
 - **Method Sections** — For each method:
   - Signature (with annotations)
   - Description placeholder
@@ -97,6 +102,7 @@ When both `.md` and `_SDD.md` already exist for a source file, the script operat
 - **New methods** — Methods found in source but not in the doc are appended as new sections (both API and SDD).
 - **New fields** — Fields found in source but not in the doc are added to the Fields list.
 - **TOC updated** — New method entries are added to the Functions table of contents.
+- **API header normalized** — Existing API docs have their top title/header block rewritten to the current format (`# ClassName`, `Software Detailed Documentation`, `Source File`).
 - **Existing content preserved** — Manually-written descriptions, design notes, and other content are never overwritten or removed.
 - **See Also enforcement** — The See Also section is always repositioned to the end of the API doc.
 - **Deduplication** — Methods already documented (by heading name or code block signature) are not re-added.
