@@ -36,8 +36,8 @@ import java.util.UUID;
 
 | Import | Purpose |
 |--------|---------|
-| `SelectionManager` | Access to player corner data for rendering |
-| `CuboidRegion` | Region geometry for edge calculation |
+| [`SelectionManager`](../manager/SelectionManager.md) | Access to player corner data for rendering |
+| [`CuboidRegion`](../model/CuboidRegion.md) | Region geometry for edge calculation |
 | `Bukkit` | Server singleton access (scheduler, players, worlds) |
 | `Color` | RGB color for dust particles |
 | `Location` | 3D position for particle spawning |

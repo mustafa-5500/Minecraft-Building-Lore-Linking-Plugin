@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-`Selection` represents a named collection of `CuboidRegion` objects owned by a player, within a single Minecraft world. It provides intelligent region addition (with overlap resolution and merging), region removal, volume computation, block containment queries, and lore document attachment. This is the primary domain model persisted by `SelectionStorageManager`.
+`Selection` represents a named collection of [`CuboidRegion`](CuboidRegion.md) objects owned by a player, within a single Minecraft world. It provides intelligent region addition (with overlap resolution and merging), region removal, volume computation, block containment queries, and lore document attachment. This is the primary domain model persisted by [`SelectionStorageManager`](../manager/SelectionStorageManager.md).
 
 ---
 
@@ -325,3 +325,23 @@ Standard accessors. `getRegions()` returns the mutable list directly — callers
 | Single world per selection | Cross-world selections are geometrically meaningless |
 | Lore documents stored by name | Fast lookup; enforces name uniqueness within a selection |
 | `long` for `createdAt` | Unix milliseconds; timezone-independent; sortable |
+
+## 15. Constructor
+
+```java
+public Selection(UUID id, String name, UUID owner, String worldName, List<CuboidRegion> regions, long createdAt)
+```
+
+TODO: Provide detailed design explanation for `Selection`.
+
+---
+
+## 16. Constructor
+
+```java
+public Selection(String name, UUID owner, String worldName)
+```
+
+TODO: Provide detailed design explanation for `Selection`.
+
+---

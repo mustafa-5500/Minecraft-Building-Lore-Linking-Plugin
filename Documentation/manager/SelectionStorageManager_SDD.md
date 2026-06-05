@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-`SelectionStorageManager` is the persistence layer for `Selection` objects. It reads and writes YAML files under `plugins/BuildingLore/selections/<player-uuid>/` and maintains an in-memory cache for fast repeated access. Each selection is stored as a single `.yml` file named after the selection.
+`SelectionStorageManager` is the persistence layer for [`Selection`](../model/Selection.md) objects. It reads and writes YAML files under `plugins/BuildingLore/selections/<player-uuid>/` and maintains an in-memory cache for fast repeated access. Each selection is stored as a single `.yml` file named after the selection.
 
 ---
 
@@ -40,7 +40,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 | `File`, `IOException` | Filesystem operations |
 | `ArrayList`, `HashMap`, `List`, `Map`, `UUID` | Collections and identifiers |
 | `Level` | Java logging level constants |
-| `CuboidRegion`, `LoreDocument`, `Selection` | Domain model classes |
+| [`CuboidRegion`](../model/CuboidRegion.md), [`LoreDocument`](../model/LoreDocument.md), [`Selection`](../model/Selection.md) | Domain model classes |
 | `ConfigurationSection`, `YamlConfiguration` | Bukkit's YAML configuration API |
 | `JavaPlugin` | Access to plugin data folder and logger |
 
@@ -69,7 +69,7 @@ private final Map<UUID, Map<String, Selection>> cache = new HashMap<>();
 |-------|------|---------|
 | `selectionsDir` | `File` | Root directory: `plugins/BuildingLore/selections/` |
 | `plugin` | `JavaPlugin` | Access to `getDataFolder()` and `getLogger()` |
-| `cache` | `Map<UUID, Map<String, Selection>>` | Two-level cache: player UUID → selection name → `Selection` object |
+| `cache` | `Map<UUID, Map<String, Selection>>` | Two-level cache: player UUID → selection name → [`Selection`](../model/Selection.md) object |
 
 The cache is eagerly populated on reads and updated on writes/deletes. It serves as a write-through cache.
 
@@ -272,13 +272,13 @@ Loads the YAML file using Bukkit's `YamlConfiguration.loadConfiguration` (handle
         }
 ```
 
-Parses each region string (format: `(x1,y1,z1)-(x2,y2,z2)`) back into `CuboidRegion` objects using the static factory method. The world name is passed in since it's not part of the compact format.
+Parses each region string (format: `(x1,y1,z1)-(x2,y2,z2)`) back into [`CuboidRegion`](../model/CuboidRegion.md) objects using the static factory method. The world name is passed in since it's not part of the compact format.
 
 ```java
         Selection selection = new Selection(id, name, owner, world, regions, createdAt);
 ```
 
-Constructs the `Selection` with the full constructor (ID, name, owner, world, pre-built regions list, timestamp).
+Constructs the [`Selection`](../model/Selection.md) with the full constructor (ID, name, owner, world, pre-built regions list, timestamp).
 
 ```java
         // Load lore documents
@@ -297,7 +297,7 @@ Constructs the `Selection` with the full constructor (ID, name, owner, world, pr
         }
 ```
 
-Iterates over each key under the `lore` section. Each key is a document name containing `id`, `createdAt`, and `entries`. Reconstructs `LoreDocument` objects and attaches them to the selection.
+Iterates over each key under the `lore` section. Each key is a document name containing `id`, `createdAt`, and `entries`. Reconstructs [`LoreDocument`](../model/LoreDocument.md) objects and attaches them to the selection.
 
 ```java
         cache.computeIfAbsent(owner, k -> new HashMap<>()).put(name, selection);

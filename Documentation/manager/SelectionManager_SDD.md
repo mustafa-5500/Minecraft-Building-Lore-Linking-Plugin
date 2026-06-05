@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-`SelectionManager` maintains per-player **ephemeral** wand corner state in memory. It provides methods to set, get, and clear the two corners of a cuboid selection, check completeness, and construct `CuboidRegion` objects. This state is intentionally not persisted — it resets on server restart or when corners are consumed via `buildRegion`.
+`SelectionManager` maintains per-player **ephemeral** wand corner state in memory. It provides methods to set, get, and clear the two corners of a cuboid selection, check completeness, and construct [`CuboidRegion`](../model/CuboidRegion.md) objects. This state is intentionally not persisted — it resets on server restart or when corners are consumed via `buildRegion`.
 
 ---
 
@@ -31,7 +31,7 @@ import org.bukkit.Location;
 | `HashMap` | Backing data structure for corner storage |
 | `Map` | Interface type for the field declarations |
 | `UUID` | Player unique identifier used as map key |
-| `CuboidRegion` | The model class constructed from two corner locations |
+| [`CuboidRegion`](../model/CuboidRegion.md) | The model class constructed from two corner locations |
 | `Location` | Bukkit class representing a 3D position with world reference |
 
 ---
@@ -105,7 +105,7 @@ public Location getCorner2(UUID playerId) {
 ```
 
 - Returns the stored `Location` or `null` if the player hasn't set that corner.
-- Used by `SelectionVisualizer` to render single-point markers when only one corner is set.
+- Used by [`SelectionVisualizer`](../visual/SelectionVisualizer.md) to render single-point markers when only one corner is set.
 
 ---
 
@@ -152,10 +152,10 @@ public CuboidRegion buildRegion(UUID playerId) {
 **Behavior:**
 1. Pre-condition check via `hasCompleteSelection` — returns `null` if not ready.
 2. Reads both locations from the maps.
-3. Constructs a `CuboidRegion` using:
+3. Constructs a [`CuboidRegion`](../model/CuboidRegion.md) using:
    - `c1.getWorld().getName()` — the world name string (not the object reference).
    - `getBlockX/Y/Z()` — integer block coordinates from both locations.
-   - The `CuboidRegion` constructor normalizes min/max internally.
+   - The [`CuboidRegion`](../model/CuboidRegion.md) constructor normalizes min/max internally.
 4. **Clears** both corners via `clearSelection` — this is a "consume" operation. The selection is one-time-use.
 5. Returns the constructed region.
 
@@ -180,8 +180,8 @@ public CuboidRegion peekRegion(UUID playerId) {
 ```
 
 Identical to `buildRegion` except it does **not** call `clearSelection`. Used for:
-- Volume previews in `WandListener`.
-- Particle rendering in `SelectionVisualizer`.
+- Volume previews in [`WandListener`](../listener/WandListener.md).
+- Particle rendering in [`SelectionVisualizer`](../visual/SelectionVisualizer.md).
 - Preview display in `BuildingLoreCommand.showPreview`.
 
 ---

@@ -45,11 +45,11 @@ import java.util.stream.Collectors;
 
 | Import Category | Items | Purpose |
 |-----------------|-------|---------|
-| Plugin managers | `LoreDocumentManager`, `SelectionManager`, `SelectionStorageManager` | Business logic delegation |
-| Models | `CuboidRegion`, `LoreDocument`, `Selection` | Data structures passed between layers |
-| Serializers | `BlockDataExporter`, `RegionSerializer` | Export/import operations |
-| Utility | `WandUtil` | Wand item creation |
-| Visual | `SelectionVisualizer` | Particle toggle |
+| Plugin managers | [`LoreDocumentManager`](../manager/LoreDocumentManager.md), [`SelectionManager`](../manager/SelectionManager.md), [`SelectionStorageManager`](../manager/SelectionStorageManager.md) | Business logic delegation |
+| Models | [`CuboidRegion`](../model/CuboidRegion.md), [`LoreDocument`](../model/LoreDocument.md), [`Selection`](../model/Selection.md) | Data structures passed between layers |
+| Serializers | [`BlockDataExporter`](../serializer/BlockDataExporter.md), [`RegionSerializer`](../serializer/RegionSerializer.md) | Export/import operations |
+| Utility | [`WandUtil`](../util/WandUtil.md) | Wand item creation |
+| Visual | [`SelectionVisualizer`](../visual/SelectionVisualizer.md) | Particle toggle |
 | Bukkit API | `ChatColor`, `World`, `Command`, `CommandSender`, `TabExecutor`, `Player`, `JavaPlugin` | Server interaction |
 | Java standard | `File`, `ArrayList`, `Collections`, `List`, `Collectors` | I/O and collection manipulation |
 
@@ -245,7 +245,7 @@ private void handleAdd(Player player, String[] args) {
 **Flow:**
 1. Validate permissions and argument count.
 2. Verify both corners exist and share the same world (`hasCompleteSelection`).
-3. `buildRegion` constructs a `CuboidRegion` from the two corners and **clears** them from memory.
+3. `buildRegion` constructs a [`CuboidRegion`](../model/CuboidRegion.md) from the two corners and **clears** them from memory.
 4. Load existing selection by name, or create a new one.
 5. `addRegion` handles overlap resolution (subtraction, merging).
 6. Persist to disk.
@@ -428,7 +428,7 @@ private void handleLore(Player player, String[] args) {
 ```
 
 A nested subcommand tree under `/bl lore`. Actions:
-- **`add`** — initiates chat-based naming flow via `LoreDocumentManager`.
+- **`add`** — initiates chat-based naming flow via [`LoreDocumentManager`](../manager/LoreDocumentManager.md).
 - **`write`** — initiates chat-based text entry flow.
 - **`list`** — displays all lore documents in a selection.
 - **`read`** — displays all entries in a specific document.
@@ -550,3 +550,33 @@ Falls through to `Collections.emptyList()` for all other cases.
 | `return true` always | All validation/error messages are handled internally; Bukkit's default usage message is never shown. |
 | Tab completion loads from storage | Gives live feedback as selections are created/deleted. |
 | Synchronous export on main thread | Bukkit's `World.getBlockAt()` is not thread-safe; a future improvement could chunk work across ticks. |
+
+## 11. `handlePos2()`
+
+```java
+private void handlePos2(Player player)
+```
+
+TODO: Provide detailed design explanation for `handlePos2`.
+
+---
+
+## 12. `sendLoreHelp()`
+
+```java
+private void sendLoreHelp(Player player)
+```
+
+TODO: Provide detailed design explanation for `sendLoreHelp`.
+
+---
+
+## 13. `sendHelp()`
+
+```java
+private void sendHelp(Player player)
+```
+
+TODO: Provide detailed design explanation for `sendHelp`.
+
+---

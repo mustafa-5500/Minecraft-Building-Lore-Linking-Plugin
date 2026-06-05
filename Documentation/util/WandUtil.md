@@ -1,4 +1,7 @@
-# [WandUtil.java](../../src/main/java/org/almond/buildinglore/util/WandUtil.java)
+# WandUtil
+
+> **Software Detailed Documentation:** [WandUtil_SDD.md](./WandUtil_SDD.md)  
+> **Source File:** [WandUtil.java](../../src/main/java/org/almond/buildinglore/util/WandUtil.java)
 
 Helper utility for creating and detecting the selection wand item. The wand is a wooden axe with a distinctive display name and lore text, used to set selection corners via left/right clicks.
 
@@ -47,6 +50,8 @@ Checks if an `ItemStack` is the selection wand by verifying the material type (w
 
 ### Returns
 `boolean` — `true` if the item is the selection wand.
+
+---
 
 ## See Also:
 - [WandListener](../listener/WandListener.md)

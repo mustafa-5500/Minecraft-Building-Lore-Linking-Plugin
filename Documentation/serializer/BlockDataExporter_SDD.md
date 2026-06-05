@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-`BlockDataExporter` reads actual block data from a live Minecraft world within a `Selection`'s regions and produces structured text output suitable for model training or documentation. It provides both in-memory string export and direct file export capabilities.
+`BlockDataExporter` reads actual block data from a live Minecraft world within a [`Selection`](../model/Selection.md)'s regions and produces structured text output suitable for model training or documentation. It provides both in-memory string export and direct file export capabilities.
 
 ---
 
@@ -32,8 +32,8 @@ import java.io.PrintWriter;
 
 | Import | Purpose |
 |--------|---------|
-| `CuboidRegion` | Region boundaries for iteration |
-| `Selection` | The selection to export |
+| [`CuboidRegion`](../model/CuboidRegion.md) | Region boundaries for iteration |
+| [`Selection`](../model/Selection.md) | The selection to export |
 | `World` | Bukkit world to read blocks from |
 | `Block` | Individual block access |
 | `BlockData` | Block state information (e.g., door facing, slab type) |

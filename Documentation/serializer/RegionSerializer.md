@@ -1,6 +1,9 @@
-# [RegionSerializer.java](../../src/main/java/org/almond/buildinglore/serializer/RegionSerializer.java)
+# RegionSerializer
 
-Converts a `Selection` to and from a compact text token for embedding in documents or sharing between players. Uses the format `[BL:world_name|x1,y1,z1>x2,y2,z2|...]` where each pipe-delimited segment after the world name represents a region's min and max corners.
+> **Software Detailed Documentation:** [RegionSerializer_SDD.md](./RegionSerializer_SDD.md)  
+> **Source File:** [RegionSerializer.java](../../src/main/java/org/almond/buildinglore/serializer/RegionSerializer.java)
+
+Converts a [`Selection`](../model/Selection.md) to and from a compact text token for embedding in documents or sharing between players. Uses the format `[BL:world_name|x1,y1,z1>x2,y2,z2|...]` where each pipe-delimited segment after the world name represents a region's min and max corners.
 
 **Functions:**
 - [serialize](#serialize)
@@ -16,7 +19,7 @@ public static String serialize(Selection selection)
 ```
 
 ### Description
-Converts a `Selection` into a compact text token in the format:
+Converts a [`Selection`](../model/Selection.md) into a compact text token in the format:
 ```
 [BL:world_name|minX,minY,minZ>maxX,maxY,maxZ|...]
 ```
@@ -25,7 +28,7 @@ Each region is separated by `|`. Designed to be copy-pasted into documents.
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selection` | `Selection` | The selection to serialize |
+| `selection` | [`Selection`](../model/Selection.md) | The selection to serialize |
 
 ### Returns
 `String` — the compact token.
@@ -40,7 +43,7 @@ public static Selection deserialize(String token, UUID owner)
 ```
 
 ### Description
-Parses a `[BL:...]` text token back into a `Selection` object. The selection is created with the name `"imported"`, a new random UUID, and the current timestamp.
+Parses a `[BL:...]` text token back into a [`Selection`](../model/Selection.md) object. The selection is created with the name `"imported"`, a new random UUID, and the current timestamp.
 
 ### Parameters
 | Name | Type | Description |
@@ -49,7 +52,7 @@ Parses a `[BL:...]` text token back into a `Selection` object. The selection is 
 | `owner` | `UUID` | The player UUID to assign as owner |
 
 ### Returns
-`Selection` — the reconstructed selection.
+[`Selection`](../model/Selection.md) — the reconstructed selection.
 
 ### Throws
 `IllegalArgumentException` — if the token format is invalid.

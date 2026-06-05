@@ -307,7 +307,7 @@ public String toString() {
 
 Compact human-readable format: `(x1,y1,z1)-(x2,y2,z2)`. Used for:
 - Player-facing messages.
-- YAML serialization in `SelectionStorageManager`.
+- YAML serialization in [`SelectionStorageManager`](../manager/SelectionStorageManager.md).
 
 ---
 

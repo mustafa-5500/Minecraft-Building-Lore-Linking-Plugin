@@ -1,6 +1,9 @@
-# [SelectionManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionManager.java)
+# SelectionManager
 
-Manages per-player selection state for building cuboid regions with the wand. Stores two corner locations per player in memory (not persisted) and provides methods to build a `CuboidRegion` from them. Adapted from `org.almond.lands.manager.SelectionManager`.
+> **Software Detailed Documentation:** [SelectionManager_SDD.md](./SelectionManager_SDD.md)  
+> **Source File:** [SelectionManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionManager.java)
+
+Manages per-player selection state for building cuboid regions with the wand. Stores two corner locations per player in memory (not persisted) and provides methods to build a [`CuboidRegion`](../model/CuboidRegion.md) from them. Adapted from `org.almond.lands.manager.SelectionManager`.
 
 **Fields:**
 - `corner1` — Map of player UUID → first corner `Location`
@@ -14,6 +17,8 @@ Manages per-player selection state for building cuboid regions with the wand. St
 - [buildRegion](#buildregion)
 - [peekRegion](#peekregion)
 - [clearSelection](#clearselection)
+- [getCorner1](#getcorner1)
+- [getCorner2](#getcorner2)
 
 ---
 
@@ -108,7 +113,7 @@ public CuboidRegion buildRegion(UUID playerId)
 ```
 
 ### Description
-Creates a `CuboidRegion` from the player's two stored corners, then clears the corner state. Returns `null` if the selection is incomplete.
+Creates a [`CuboidRegion`](../model/CuboidRegion.md) from the player's two stored corners, then clears the corner state. Returns `null` if the selection is incomplete.
 
 ### Parameters
 | Name | Type | Description |
@@ -116,7 +121,7 @@ Creates a `CuboidRegion` from the player's two stored corners, then clears the c
 | `playerId` | `UUID` | The player's unique ID |
 
 ### Returns
-`CuboidRegion` or `null` — the constructed region, or `null` if corners are not ready.
+[`CuboidRegion`](../model/CuboidRegion.md) or `null` — the constructed region, or `null` if corners are not ready.
 
 ---
 
@@ -136,7 +141,7 @@ Returns what the region would be from the current corners without consuming/clea
 | `playerId` | `UUID` | The player's unique ID |
 
 ### Returns
-`CuboidRegion` or `null`.
+[`CuboidRegion`](../model/CuboidRegion.md) or `null`.
 
 ---
 
@@ -157,6 +162,46 @@ Removes both stored corners for the given player.
 
 ### Returns
 `void`
+
+## getCorner1
+
+### Signature
+```java
+public Location getCorner1(UUID playerId)
+```
+
+### Description
+TODO: Describe what `getCorner1` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `playerId` | `UUID` | TODO: describe |
+
+### Returns
+`Location` — TODO: describe return value.
+
+---
+
+## getCorner2
+
+### Signature
+```java
+public Location getCorner2(UUID playerId)
+```
+
+### Description
+TODO: Describe what `getCorner2` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `playerId` | `UUID` | TODO: describe |
+
+### Returns
+`Location` — TODO: describe return value.
+
+---
 
 ## See Also:
 - [BuildingLorePlugin](../BuildingLorePlugin.md)

@@ -1,6 +1,9 @@
-# [SelectionStorageManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionStorageManager.java)
+# SelectionStorageManager
 
-Persists `Selection` objects as YAML files under `plugins/BuildingLore/selections/<player-uuid>/`. Maintains an in-memory cache keyed by owner UUID and selection name for fast lookups, with disk I/O for durability.
+> **Software Detailed Documentation:** [SelectionStorageManager_SDD.md](./SelectionStorageManager_SDD.md)  
+> **Source File:** [SelectionStorageManager.java](../../src/main/java/org/almond/buildinglore/manager/SelectionStorageManager.java)
+
+Persists [`Selection`](../model/Selection.md) objects as YAML files under `plugins/BuildingLore/selections/<player-uuid>/`. Maintains an in-memory cache keyed by owner UUID and selection name for fast lookups, with disk I/O for durability.
 
 **Fields:**
 - `selectionsDir` — Root directory for all selection YAML files
@@ -48,7 +51,7 @@ Persists a selection to disk as a YAML file at `selections/<owner-uuid>/<name>.y
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selection` | `Selection` | The selection to save |
+| `selection` | [`Selection`](../model/Selection.md) | The selection to save |
 
 ### Returns
 `void`
@@ -72,7 +75,7 @@ Loads a single selection by owner and name. Checks the in-memory cache first; if
 | `name` | `String` | Selection name |
 
 ### Returns
-`Selection` or `null` — the loaded selection, or `null` if not found.
+[`Selection`](../model/Selection.md) or `null` — the loaded selection, or `null` if not found.
 
 ---
 
@@ -134,7 +137,7 @@ Convenience method that delegates to `loadSelection`. Returns a selection from c
 | `name` | `String` | Selection name |
 
 ### Returns
-`Selection` or `null`.
+[`Selection`](../model/Selection.md) or `null`.
 
 ---
 
@@ -146,7 +149,7 @@ private Selection loadFromFile(File file, UUID owner)
 ```
 
 ### Description
-Internal method that reads a YAML file and reconstructs a `Selection` object. Parses the id, name, world, timestamp, and region strings. Caches the result. Logs a warning on failure.
+Internal method that reads a YAML file and reconstructs a [`Selection`](../model/Selection.md) object. Parses the id, name, world, timestamp, and region strings. Caches the result. Logs a warning on failure.
 
 ### Parameters
 | Name | Type | Description |
@@ -155,7 +158,7 @@ Internal method that reads a YAML file and reconstructs a `Selection` object. Pa
 | `owner` | `UUID` | The owning player's UUID |
 
 ### Returns
-`Selection` or `null` — the parsed selection, or `null` if parsing failed.
+[`Selection`](../model/Selection.md) or `null` — the parsed selection, or `null` if parsing failed.
 
 ## See Also:
 - [BuildingLorePlugin](../BuildingLorePlugin.md)

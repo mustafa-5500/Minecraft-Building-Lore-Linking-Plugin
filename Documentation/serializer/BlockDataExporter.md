@@ -1,6 +1,9 @@
-# [BlockDataExporter.java](../../src/main/java/org/almond/buildinglore/serializer/BlockDataExporter.java)
+# BlockDataExporter
 
-Reads actual block data from the Bukkit world within a `Selection`'s regions and outputs structured text suitable for model training. Each block is recorded with its coordinates, type, and block state. Air blocks can optionally be skipped.
+> **Software Detailed Documentation:** [BlockDataExporter_SDD.md](./BlockDataExporter_SDD.md)  
+> **Source File:** [BlockDataExporter.java](../../src/main/java/org/almond/buildinglore/serializer/BlockDataExporter.java)
+
+Reads actual block data from the Bukkit world within a [`Selection`](../model/Selection.md)'s regions and outputs structured text suitable for model training. Each block is recorded with its coordinates, type, and block state. Air blocks can optionally be skipped.
 
 **Functions:**
 - [export](#export)
@@ -26,7 +29,7 @@ x,y,z | minecraft:block_type | [state=value,...]
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selection` | `Selection` | The selection to export |
+| `selection` | [`Selection`](../model/Selection.md) | The selection to export |
 | `world` | `World` | The Bukkit World to read blocks from |
 | `skipAir` | `boolean` | If `true`, air blocks are omitted |
 
@@ -48,7 +51,7 @@ Convenience method that calls `export()` and writes the result to a text file at
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selection` | `Selection` | The selection to export |
+| `selection` | [`Selection`](../model/Selection.md) | The selection to export |
 | `world` | `World` | The Bukkit World |
 | `exportDir` | `File` | Target directory for the output file |
 | `skipAir` | `boolean` | If `true`, air blocks are omitted |

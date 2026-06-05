@@ -33,9 +33,9 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 | Import | Purpose |
 |--------|---------|
-| `SelectionManager` | Store the clicked block position as corner 1 or 2 |
-| `SelectionVisualizer` | Auto-enable particle preview on first wand use |
-| `WandUtil` | Identify whether the held item is the selection wand |
+| [`SelectionManager`](../manager/SelectionManager.md) | Store the clicked block position as corner 1 or 2 |
+| [`SelectionVisualizer`](../visual/SelectionVisualizer.md) | Auto-enable particle preview on first wand use |
+| [`WandUtil`](../util/WandUtil.md) | Identify whether the held item is the selection wand |
 | `ChatColor` | Colored chat messages |
 | `Location` | Represents a 3D position in a world |
 | `Block` | The block that was clicked |
@@ -166,7 +166,7 @@ Gets the `Location` of the block (integer block coordinates plus world reference
 ```
 
 - Checks if **both** corners are now set and in the same world.
-- `peekRegion` constructs a temporary `CuboidRegion` without consuming the corners.
+- `peekRegion` constructs a temporary [`CuboidRegion`](../model/CuboidRegion.md) without consuming the corners.
 - Displays the total block volume for immediate spatial awareness.
 
 ### 6.8 Auto-Enable Visualization

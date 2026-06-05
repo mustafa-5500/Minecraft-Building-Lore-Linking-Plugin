@@ -1,4 +1,7 @@
-# [BuildingLoreCommand.java](../../src/main/java/org/almond/buildinglore/command/BuildingLoreCommand.java)
+# BuildingLoreCommand
+
+> **Software Detailed Documentation:** [BuildingLoreCommand_SDD.md](./BuildingLoreCommand_SDD.md)  
+> **Source File:** [BuildingLoreCommand.java](../../src/main/java/org/almond/buildinglore/command/BuildingLoreCommand.java)
 
 The command handler for the `/bl` command tree. Implements `TabExecutor` to handle both command execution and tab completion. Routes subcommands to individual handler methods for wand management, selection manipulation, serialization, export/import, and visualization toggling.
 
@@ -8,6 +11,7 @@ The command handler for the `/bl` command tree. Implements `TabExecutor` to hand
 - `storageManager` — Handles persistent selection storage
 - `visualizer` — Controls particle-based selection visualization
 - `PREFIX` — Chat message prefix for consistent formatting
+- `loreManager` ([`LoreDocumentManager`](../manager/LoreDocumentManager.md)) — TODO: describe field
 
 **Functions:**
 - [onCommand](#oncommand)
@@ -24,6 +28,12 @@ The command handler for the `/bl` command tree. Implements `TabExecutor` to hand
 - [showPreview](#showpreview)
 - [sendHelp](#sendhelp)
 - [onTabComplete](#ontabcomplete)
+- [BuildingLoreCommand (Constructor)](#buildinglorecommand)
+- [handlePos1](#handlepos1)
+- [handlePos2](#handlepos2)
+- [handleLore](#handlelore)
+- [sendLoreHelp](#sendlorehelp)
+- [handleViz](#handleviz)
 
 ---
 
@@ -79,7 +89,7 @@ private void handleAdd(Player player, String[] args)
 ```
 
 ### Description
-Builds a `CuboidRegion` from the player's current corners and adds it to the named selection. Creates the selection if it doesn't exist. Saves to disk immediately.
+Builds a [`CuboidRegion`](../model/CuboidRegion.md) from the player's current corners and adds it to the named selection. Creates the selection if it doesn't exist. Saves to disk immediately.
 
 ### Usage
 `/bl add <name>`
@@ -253,6 +263,131 @@ Provides tab completion suggestions. For the first argument, suggests all subcom
 
 ### Returns
 `List<String>` — filtered suggestions matching the partial input.
+
+## BuildingLoreCommand (Constructor)
+
+### Signature
+```java
+public BuildingLoreCommand(JavaPlugin plugin, SelectionManager selectionManager, SelectionStorageManager storageManager, SelectionVisualizer visualizer, LoreDocumentManager loreManager)
+```
+
+### Description
+TODO: Describe what `BuildingLoreCommand` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `plugin` | `JavaPlugin` | TODO: describe |
+| `selectionManager` | [`SelectionManager`](../manager/SelectionManager.md) | TODO: describe |
+| `storageManager` | [`SelectionStorageManager`](../manager/SelectionStorageManager.md) | TODO: describe |
+| `visualizer` | [`SelectionVisualizer`](../visual/SelectionVisualizer.md) | TODO: describe |
+| `loreManager` | [`LoreDocumentManager`](../manager/LoreDocumentManager.md) | TODO: describe |
+
+### Returns
+`BuildingLoreCommand` instance.
+
+---
+
+## handlePos1
+
+### Signature
+```java
+private void handlePos1(Player player)
+```
+
+### Description
+TODO: Describe what `handlePos1` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `player` | `Player` | TODO: describe |
+
+### Returns
+`void`
+
+---
+
+## handlePos2
+
+### Signature
+```java
+private void handlePos2(Player player)
+```
+
+### Description
+TODO: Describe what `handlePos2` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `player` | `Player` | TODO: describe |
+
+### Returns
+`void`
+
+---
+
+## handleLore
+
+### Signature
+```java
+private void handleLore(Player player, String[] args)
+```
+
+### Description
+TODO: Describe what `handleLore` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `player` | `Player` | TODO: describe |
+| `args` | `String[]` | TODO: describe |
+
+### Returns
+`void`
+
+---
+
+## sendLoreHelp
+
+### Signature
+```java
+private void sendLoreHelp(Player player)
+```
+
+### Description
+TODO: Describe what `sendLoreHelp` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `player` | `Player` | TODO: describe |
+
+### Returns
+`void`
+
+---
+
+## handleViz
+
+### Signature
+```java
+private void handleViz(Player player)
+```
+
+### Description
+TODO: Describe what `handleViz` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `player` | `Player` | TODO: describe |
+
+### Returns
+`void`
+
+---
 
 ## See Also:
 - [BuildingLorePlugin](../BuildingLorePlugin.md)

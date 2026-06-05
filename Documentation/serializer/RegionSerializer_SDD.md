@@ -7,7 +7,7 @@
 
 ## 1. Overview
 
-`RegionSerializer` converts `Selection` objects to and from compact text tokens that players can copy-paste to share selections. The token format encodes the world name and all region coordinates into a single-line string.
+`RegionSerializer` converts [`Selection`](../model/Selection.md) objects to and from compact text tokens that players can copy-paste to share selections. The token format encodes the world name and all region coordinates into a single-line string.
 
 ---
 
@@ -28,8 +28,8 @@ import java.util.UUID;
 
 | Import | Purpose |
 |--------|---------|
-| `CuboidRegion` | Region data to encode/decode |
-| `Selection` | The object being serialized/deserialized |
+| [`CuboidRegion`](../model/CuboidRegion.md) | Region data to encode/decode |
+| [`Selection`](../model/Selection.md) | The object being serialized/deserialized |
 | `ArrayList`, `List` | Building the region list during deserialization |
 | `UUID` | Generating a new UUID for imported selections |
 
@@ -185,7 +185,7 @@ For each region segment (indices 1..n):
 3. Split each half on `,` to get 3 coordinates.
 4. Validate exactly 3 coordinates per half.
 5. Parse integers with `trim()` for whitespace tolerance.
-6. Construct `CuboidRegion` (constructor handles min/max normalization).
+6. Construct [`CuboidRegion`](../model/CuboidRegion.md) (constructor handles min/max normalization).
 
 Throws `IllegalArgumentException` with descriptive messages for any validation failure. `Integer.parseInt` will also throw `NumberFormatException` (subclass of `IllegalArgumentException`) for non-numeric values.
 
@@ -196,7 +196,7 @@ Throws `IllegalArgumentException` with descriptive messages for any validation f
 }
 ```
 
-Creates a new `Selection` with:
+Creates a new [`Selection`](../model/Selection.md) with:
 - **Random UUID** — unique identity for the imported selection.
 - **Name `"imported"`** — default name; player can see it in their list.
 - **Provided `owner`** — the importing player becomes the owner.

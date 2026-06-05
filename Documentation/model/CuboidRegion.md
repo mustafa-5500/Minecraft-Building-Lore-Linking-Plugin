@@ -1,4 +1,7 @@
-# [CuboidRegion.java](../../src/main/java/org/almond/buildinglore/model/CuboidRegion.java)
+# CuboidRegion
+
+> **Software Detailed Documentation:** [CuboidRegion_SDD.md](./CuboidRegion_SDD.md)  
+> **Source File:** [CuboidRegion.java](../../src/main/java/org/almond/buildinglore/model/CuboidRegion.java)
 
 An immutable cuboid region defined by two corners (min and max block coordinates) within a named world. Corners are automatically normalized to min/max on construction. Provides spatial operations including containment checks, overlap detection, adjacency testing, merging, intersection, and subtraction. Adapted from `org.almond.lands.model.Region`.
 
@@ -6,6 +9,8 @@ An immutable cuboid region defined by two corners (min and max block coordinates
 - `worldName` — The name of the world this region belongs to
 - `minX`, `minY`, `minZ` — Minimum corner coordinates
 - `maxX`, `maxY`, `maxZ` — Maximum corner coordinates
+- `minZ` (`int minX, minY,`) — TODO: describe field
+- `maxZ` (`int maxX, maxY,`) — TODO: describe field
 
 **Functions:**
 - [constructor](#cuboidregion-constructor)
@@ -21,6 +26,16 @@ An immutable cuboid region defined by two corners (min and max block coordinates
 - [fromString](#fromstring)
 - [equals_hashCode](#equals--hashcode)
 - [getters](#getters)
+- [containsRegion](#containsregion)
+- [equals](#equals)
+- [hashCode](#hashcode)
+- [getWorldName](#getworldname)
+- [getMinX](#getminx)
+- [getMinY](#getminy)
+- [getMinZ](#getminz)
+- [getMaxX](#getmaxx)
+- [getMaxY](#getmaxy)
+- [getMaxZ](#getmaxz)
 
 ---
 
@@ -290,6 +305,192 @@ public int getMaxZ()
 
 ### Description
 Accessors for the region's immutable fields: world name and the six normalized corner coordinates.
+
+## containsRegion
+
+### Signature
+```java
+public boolean containsRegion(CuboidRegion other)
+```
+
+### Description
+TODO: Describe what `containsRegion` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `other` | `CuboidRegion` | TODO: describe |
+
+### Returns
+`boolean` — TODO: describe return value.
+
+---
+
+## equals
+
+### Signature
+```java
+@Override
+public boolean equals(Object obj)
+```
+
+### Description
+TODO: Describe what `equals` does.
+
+### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `Object` | TODO: describe |
+
+### Returns
+`boolean` — TODO: describe return value.
+
+---
+
+## hashCode
+
+### Signature
+```java
+@Override
+public int hashCode()
+```
+
+### Description
+TODO: Describe what `hashCode` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getWorldName
+
+### Signature
+```java
+public String getWorldName()
+```
+
+### Description
+TODO: Describe what `getWorldName` does.
+
+### Parameters
+None.
+
+### Returns
+`String` — TODO: describe return value.
+
+---
+
+## getMinX
+
+### Signature
+```java
+public int getMinX()
+```
+
+### Description
+TODO: Describe what `getMinX` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getMinY
+
+### Signature
+```java
+public int getMinY()
+```
+
+### Description
+TODO: Describe what `getMinY` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getMinZ
+
+### Signature
+```java
+public int getMinZ()
+```
+
+### Description
+TODO: Describe what `getMinZ` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getMaxX
+
+### Signature
+```java
+public int getMaxX()
+```
+
+### Description
+TODO: Describe what `getMaxX` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getMaxY
+
+### Signature
+```java
+public int getMaxY()
+```
+
+### Description
+TODO: Describe what `getMaxY` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
+
+## getMaxZ
+
+### Signature
+```java
+public int getMaxZ()
+```
+
+### Description
+TODO: Describe what `getMaxZ` does.
+
+### Parameters
+None.
+
+### Returns
+`int` — TODO: describe return value.
+
+---
 
 ## See Also:
 - [Selection](./Selection.md)

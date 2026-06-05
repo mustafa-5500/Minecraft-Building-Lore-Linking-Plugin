@@ -32,13 +32,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 | Import | Purpose |
 |--------|---------|
-| `BuildingLoreCommand` | The `/bl` command executor and tab completer |
-| `LoreChatListener` | Event listener that captures chat input during lore editing sessions |
-| `WandListener` | Event listener that handles wand click interactions for corner selection |
-| `LoreDocumentManager` | Manages per-player lore document input state |
-| `SelectionManager` | Manages per-player ephemeral wand corner state in memory |
-| `SelectionStorageManager` | Handles disk persistence (YAML) of selections |
-| `SelectionVisualizer` | Draws particle outlines of selections |
+| [`BuildingLoreCommand`](command/BuildingLoreCommand.md) | The `/bl` command executor and tab completer |
+| [`LoreChatListener`](listener/LoreChatListener.md) | Event listener that captures chat input during lore editing sessions |
+| [`WandListener`](listener/WandListener.md) | Event listener that handles wand click interactions for corner selection |
+| [`LoreDocumentManager`](manager/LoreDocumentManager.md) | Manages per-player lore document input state |
+| [`SelectionManager`](manager/SelectionManager.md) | Manages per-player ephemeral wand corner state in memory |
+| [`SelectionStorageManager`](manager/SelectionStorageManager.md) | Handles disk persistence (YAML) of selections |
+| [`SelectionVisualizer`](visual/SelectionVisualizer.md) | Draws particle outlines of selections |
 | `PluginCommand` | Bukkit API class representing a registered command |
 | `JavaPlugin` | Bukkit base class for all plugins |
 
@@ -66,10 +66,10 @@ private LoreDocumentManager loreManager;
 
 | Field | Type | Responsibility |
 |-------|------|----------------|
-| `selectionManager` | `SelectionManager` | In-memory map of player UUID → corner 1/corner 2 locations |
-| `storageManager` | `SelectionStorageManager` | Reads/writes `Selection` objects as YAML under the plugin data folder |
-| `visualizer` | `SelectionVisualizer` | Schedules particle rendering tasks showing cuboid edges |
-| `loreManager` | `LoreDocumentManager` | Tracks which players are currently in lore naming/writing chat mode |
+| `selectionManager` | [`SelectionManager`](manager/SelectionManager.md) | In-memory map of player UUID → corner 1/corner 2 locations |
+| `storageManager` | [`SelectionStorageManager`](manager/SelectionStorageManager.md) | Reads/writes [`Selection`](model/Selection.md) objects as YAML under the plugin data folder |
+| `visualizer` | [`SelectionVisualizer`](visual/SelectionVisualizer.md) | Schedules particle rendering tasks showing cuboid edges |
+| `loreManager` | [`LoreDocumentManager`](manager/LoreDocumentManager.md) | Tracks which players are currently in lore naming/writing chat mode |
 
 All fields are `private` and not exposed via setters — they are initialized exactly once in `onEnable` and accessed via getters.
 

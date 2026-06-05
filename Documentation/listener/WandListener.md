@@ -1,4 +1,7 @@
-# [WandListener.java](../../src/main/java/org/almond/buildinglore/listener/WandListener.java)
+# WandListener
+
+> **Software Detailed Documentation:** [WandListener_SDD.md](./WandListener_SDD.md)  
+> **Source File:** [WandListener.java](../../src/main/java/org/almond/buildinglore/listener/WandListener.java)
 
 An event listener that detects when a player interacts with the selection wand and sets selection corners accordingly. Left-click sets corner 1, right-click sets corner 2. Automatically enables particle visualization when the wand is used and shows a volume preview when both corners are set.
 
@@ -19,12 +22,12 @@ public WandListener(SelectionManager selectionManager)
 ```
 
 ### Description
-Creates the listener with a reference to the shared `SelectionManager`.
+Creates the listener with a reference to the shared [`SelectionManager`](../manager/SelectionManager.md).
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `selectionManager` | `SelectionManager` | The manager tracking per-player corner state |
+| `selectionManager` | [`SelectionManager`](../manager/SelectionManager.md) | The manager tracking per-player corner state |
 
 ---
 
