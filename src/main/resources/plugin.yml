@@ -9,7 +9,7 @@ authors:
 commands:
   bl:
     description: Building Lore selection commands
-    usage: /<command> [wand|pos1|pos2|add|remove|list|info|delete|serialize|export|import]
+    usage: /<command> [wand|pos1|pos2|add|remove|list|info|delete|serialize|export|import|lore]
     aliases:
       - buildinglore
 
