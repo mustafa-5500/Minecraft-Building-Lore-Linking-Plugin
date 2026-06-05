@@ -1,8 +1,11 @@
 # Puml Function Decomposition/Dataflow Generator Plan:
 
-Input: Source code files, currently Java, however we will try to make it more universal, following certain patterns that define functions.
+**Input:** Source code files, currently Java, however we will try to make it more universal, following certain patterns that define functions.
 
-Output: puml file, which is a text representation of a uml diagram. The uml diagram can then be compiled by a Plantuml generator.
+**Step 1:** Parse source files. To do this the python script will need to use the given source code folder, then iterate through the folder structure to collect the paths, I believe we need os library to do that. then once we got all the source file paths loaded in a list, we can iterate through them and read the code. Specifically for functions. We will create a dictionary of lists, so each function will have a list of other functions it calls. we would also want to keep a dictionary of lists for each source file containing every function in that source file. These two dictionaries can then be used to create the plant uml diagrams. First the function boxes are created by the source file dictionary. The outer box will be the source file, with inner boxes for functions. then the data flow will be created using the dictionary of function calls for each function. We should actually have two dictionaries, it will be unneccesarily taking up space, but it would make the code easier. So the first dictionary, the list of function calls for each function, is the output dictionary. The secondary dictionary, will be the list of functions calling a specific function. Actually,  no this second dictionary is not necessarily the inputs to a function, since a function call does not always return a value. The actual inputs would be the returned value. Now should modified data structures be considered as returned values? I dont think so, I guess for that the reader can look deeper into what the function does and notice that it modifies the given data structure, so it does not return a new object. Ok so that means we only need the two dictionaries that we originally described. The inputs to the specific function are the return values, essentially the values given and consumed by the specific function.
+
+
+**Output:** puml file, which is a text representation of a uml diagram. The uml diagram can then be compiled by a Plantuml generator.
 
 Comments: We will see if a dark mode colouration can be created, maybe we could alternate between light and dark mode uml shown, based on the theme selected by the user.
 
