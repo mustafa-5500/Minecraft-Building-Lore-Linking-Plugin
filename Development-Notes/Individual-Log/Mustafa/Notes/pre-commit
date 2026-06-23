@@ -1,0 +1,7 @@
+#!/bin/sh
+
+SRC="Development/Daily Journal/Almond5500"
+DEST="../Journal/Projects/Building-Lore-Linking-Plugin"
+
+mkdir -p "$DEST"
+cp -r "$SRC/"* "$DEST/"
