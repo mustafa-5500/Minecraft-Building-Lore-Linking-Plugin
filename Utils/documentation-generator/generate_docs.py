@@ -1129,7 +1129,9 @@ def generate_sdd_doc(
 def process_source_directory(
     source_dir: str, docs_output_dir: str, overwrite: bool = False
 ):
-    """Walk the source directory and generate documentation templates."""
+    """
+    Walk the source directory and generate documentation templates.
+    """
     source_dir = os.path.abspath(source_dir)
     docs_output_dir = os.path.abspath(docs_output_dir)
 
@@ -1257,8 +1259,10 @@ def process_source_directory(
 
     return generated_count, skipped_count
 
-
 def main():
+    """
+    Entry point for the documentation generator script. Parses the command-line arguments and passes them forward to other functions.
+    """
     parser = argparse.ArgumentParser(
         description="Generate documentation templates from Java source files."
     )
