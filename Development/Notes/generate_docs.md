@@ -19,5 +19,28 @@ Uses the `os` package to get the absolute path of the source directory, and docu
 
 Uses [`build_type_doc_map()`](#build_type_doc_map) which returns a dictionary of class names to documentation files.
 
+Iterates through the files in the source directory, collected through `os.walk()`. 
+
+Creates the documentation directory, firsts get the relative directory from the root, CWD of the script, and the soruce directory. If there is no relative path then the documentation directory is created in the CWD. Otherwise it is created in the relative directory from the CWD to the source directory.
+
+Iterate through the java files, creating the path for the documentation files, API, and SDD. Parses the Java files with `parse_java_file()`.
+
 # build_type_doc_map()
 
+**Inputs:** Given the `source_dir`, and `docs_output_dir` strings.
+
+Uses the `os` package to get the absolute path of the source and documentation directories.
+
+Iterates through all the files in the source directory, collected through an `os.walk()`. filters through only java files, this can be the location where we add other programming languages file documentation. Takes the name of each java file as a class. Then fills the class entry with the documentation file absolute path.
+
+    For other languages we can use the file name as a component/module. With functions inside of them.
+
+# parse_java_file()
+
+**Inputs:** The path to the java file, `file_path`.
+
+Opens the file using `utf-8` encoding, wraps the open attempt in a try catch to handle errors.
+
+Splits the file into lines using `split("\n")`.
+
+Uses regular expressions to extract the package, imports, and class declarations from the opened file.

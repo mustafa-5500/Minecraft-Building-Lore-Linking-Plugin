@@ -1,17 +1,21 @@
 """
-Documentation Template Generator for Java Plugin Projects.
+Documentation Template Generator for Java and Python Plugin Projects.
 
 Given a source code directory and documentation output folder,
 this script generates template .md and _SDD.md documentation files mirroring
 the source folder structure. Templates follow the existing documentation format.
+
+Supports Java (.java) and Python (.py) source files.
 
 Usage:
     python generate_docs.py <source_dir> <docs_output_dir>
 
 Example:
     python generate_docs.py ../src/main/java/org/almond/buildinglore ../Documentation
+    python generate_docs.py ../src/main/python/org/almond/buildinglore ../Documentation
 """
 
+import ast
 import os
 import re
 import sys
@@ -54,6 +58,7 @@ class JavaClassInfo:
     extends_class: Optional[str] = None
     implements: List[str] = field(default_factory=list)
     javadoc: Optional[str] = None
+    language: str = "java"
 
 
 def parse_java_file(file_path: str) -> Optional[JavaClassInfo]:
@@ -282,22 +287,300 @@ def parse_parameters(params_raw: str) -> List[tuple]:
     return params
 
 
+# =============================================================================
+# Python Parsing
+# =============================================================================
+
+
+def _ast_annotation_to_str(node) -> str:
+    """Convert an AST type annotation node to its string representation."""
+    if node is None:
+        return ""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Constant):
+        return repr(node.value) if isinstance(node.value, str) else str(node.value)
+    if isinstance(node, ast.Attribute):
+        return f"{_ast_annotation_to_str(node.value)}.{node.attr}"
+    if isinstance(node, ast.Subscript):
+        return f"{_ast_annotation_to_str(node.value)}[{_ast_annotation_to_str(node.slice)}]"
+    if isinstance(node, ast.Tuple):
+        return ", ".join(_ast_annotation_to_str(e) for e in node.elts)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return f"{_ast_annotation_to_str(node.left)} | {_ast_annotation_to_str(node.right)}"
+    if isinstance(node, ast.List):
+        return f"[{', '.join(_ast_annotation_to_str(e) for e in node.elts)}]"
+    try:
+        return ast.unparse(node)
+    except AttributeError:
+        return "Any"
+
+
+def _build_python_signature(func_node, skip_first: bool = True) -> tuple:
+    """Build a Python function signature string and extract (type, name) parameter list.
+
+    Returns (signature_str, parameters_list, return_type_str).
+    Skips the first positional argument (``self`` / ``cls``) when *skip_first* is True.
+    """
+    args = func_node.args
+    sig_parts = []
+    param_list: List[tuple] = []
+
+    all_positional = list(args.args)
+    defaults_offset = len(all_positional) - len(args.defaults)
+
+    for i, arg in enumerate(all_positional):
+        if skip_first and i == 0 and arg.arg in ("self", "cls"):
+            continue
+        arg_type = _ast_annotation_to_str(arg.annotation)
+        default_idx = i - defaults_offset
+        if default_idx >= 0:
+            default_node = args.defaults[default_idx]
+            if isinstance(default_node, ast.Constant):
+                default_str = repr(default_node.value)
+            elif isinstance(default_node, ast.Name):
+                default_str = default_node.id
+            else:
+                default_str = "..."
+            part = f"{arg.arg}: {arg_type} = {default_str}" if arg_type else f"{arg.arg} = {default_str}"
+        else:
+            part = f"{arg.arg}: {arg_type}" if arg_type else arg.arg
+        sig_parts.append(part)
+        param_list.append((arg_type, arg.arg))
+
+    if args.vararg:
+        vtype = _ast_annotation_to_str(args.vararg.annotation)
+        sig_parts.append(f"*{args.vararg.arg}: {vtype}" if vtype else f"*{args.vararg.arg}")
+        param_list.append((f"*{vtype}" if vtype else "*", args.vararg.arg))
+
+    for arg in args.kwonlyargs:
+        arg_type = _ast_annotation_to_str(arg.annotation)
+        sig_parts.append(f"{arg.arg}: {arg_type}" if arg_type else arg.arg)
+        param_list.append((arg_type, arg.arg))
+
+    if args.kwarg:
+        ktype = _ast_annotation_to_str(args.kwarg.annotation)
+        sig_parts.append(f"**{args.kwarg.arg}: {ktype}" if ktype else f"**{args.kwarg.arg}")
+        param_list.append((f"**{ktype}" if ktype else "**", args.kwarg.arg))
+
+    return_type = _ast_annotation_to_str(func_node.returns)
+    ret_suffix = f" -> {return_type}" if return_type else ""
+    func_kw = "async def" if isinstance(func_node, ast.AsyncFunctionDef) else "def"
+    signature = f"{func_kw} {func_node.name}({', '.join(sig_parts)}){ret_suffix}:"
+
+    return signature, param_list, return_type
+
+
+def _extract_python_fields(class_node: ast.ClassDef) -> List[FieldInfo]:
+    """Extract class-level variables and ``__init__`` instance attributes."""
+    fields: List[FieldInfo] = []
+    seen: set = set()
+
+    # Class-level declarations
+    for node in class_node.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            name = node.target.id
+            if name not in seen:
+                ftype = _ast_annotation_to_str(node.annotation)
+                access = "private" if name.startswith("_") else "public"
+                fields.append(FieldInfo(name=name, type=ftype, access=access))
+                seen.add(name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if (isinstance(target, ast.Name) and
+                        not target.id.startswith("__") and
+                        target.id not in seen):
+                    access = "private" if target.id.startswith("_") else "public"
+                    fields.append(FieldInfo(name=target.id, type="", access=access))
+                    seen.add(target.id)
+
+    # Instance attributes from __init__
+    for node in class_node.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "__init__":
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.AnnAssign):
+                    if (isinstance(stmt.target, ast.Attribute) and
+                            isinstance(stmt.target.value, ast.Name) and
+                            stmt.target.value.id == "self" and
+                            stmt.target.attr not in seen):
+                        attr_name = stmt.target.attr
+                        attr_type = _ast_annotation_to_str(stmt.annotation)
+                        access = "private" if attr_name.startswith("_") else "public"
+                        fields.append(FieldInfo(name=attr_name, type=attr_type, access=access))
+                        seen.add(attr_name)
+                elif isinstance(stmt, ast.Assign):
+                    for target in stmt.targets:
+                        if (isinstance(target, ast.Attribute) and
+                                isinstance(target.value, ast.Name) and
+                                target.value.id == "self" and
+                                not target.attr.startswith("__") and
+                                target.attr not in seen):
+                            access = "private" if target.attr.startswith("_") else "public"
+                            fields.append(FieldInfo(name=target.attr, type="", access=access))
+                            seen.add(target.attr)
+    return fields
+
+
+def _parse_python_func_node(func_node) -> MethodInfo:
+    """Convert an AST function/method node into a ``MethodInfo``."""
+    decorators = []
+    is_static = False
+    for dec in func_node.decorator_list:
+        if isinstance(dec, ast.Name):
+            decorators.append(f"@{dec.id}")
+            if dec.id == "staticmethod":
+                is_static = True
+        elif isinstance(dec, ast.Attribute):
+            decorators.append(f"@{dec.attr}")
+
+    is_constructor = func_node.name == "__init__"
+    # Static methods keep all args; others skip self/cls
+    signature, param_list, return_type = _build_python_signature(
+        func_node, skip_first=not is_static
+    )
+
+    name = func_node.name
+    if name.startswith("__") and name.endswith("__"):
+        access = "public"
+    elif name.startswith("_"):
+        access = "private"
+    else:
+        access = "public"
+
+    return MethodInfo(
+        name=name,
+        signature=signature,
+        return_type=return_type,
+        parameters=param_list,
+        annotations=decorators,
+        access=access,
+        is_static=is_static,
+        is_constructor=is_constructor,
+    )
+
+
+def _parse_python_class_node(
+    class_node: ast.ClassDef, file_name: str, imports: List[str]
+) -> JavaClassInfo:
+    """Convert an AST ``ClassDef`` node into a ``JavaClassInfo``."""
+    class_name = class_node.name
+    bases = []
+    for base in class_node.bases:
+        if isinstance(base, ast.Name):
+            bases.append(base.id)
+        elif isinstance(base, ast.Attribute):
+            bases.append(f"{_ast_annotation_to_str(base.value)}.{base.attr}")
+
+    class_decl = f"class {class_name}({', '.join(bases)}):" if bases else f"class {class_name}:"
+    fields = _extract_python_fields(class_node)
+    methods = [
+        _parse_python_func_node(n)
+        for n in class_node.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    return JavaClassInfo(
+        name=class_name,
+        file_name=file_name,
+        package="",
+        imports=imports,
+        class_declaration=class_decl,
+        fields=fields,
+        methods=methods,
+        extends_class=bases[0] if bases else None,
+        implements=bases[1:] if len(bases) > 1 else [],
+        javadoc=ast.get_docstring(class_node),
+        language="python",
+    )
+
+
+def parse_python_file(file_path: str) -> List[JavaClassInfo]:
+    """Parse a Python source file and return one ``JavaClassInfo`` per top-level class.
+
+    If no classes are found but module-level functions exist, returns a single
+    ``JavaClassInfo`` representing the module itself.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            source = f.read()
+        tree = ast.parse(source, filename=file_path)
+    except (IOError, SyntaxError, UnicodeDecodeError):
+        return []
+
+    file_name = os.path.basename(file_path)
+    module_name = file_name[:-3]  # strip .py
+
+    imports: List[str] = []
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            for alias in node.names:
+                imports.append(f"{module}.{alias.name}" if module else alias.name)
+
+    top_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
+    top_functions = [
+        n for n in tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    results: List[JavaClassInfo] = [
+        _parse_python_class_node(cls, file_name, imports) for cls in top_classes
+    ]
+
+    if not top_classes and top_functions:
+        results.append(JavaClassInfo(
+            name=module_name,
+            file_name=file_name,
+            package="",
+            imports=imports,
+            class_declaration=f"# module: {module_name}",
+            fields=[],
+            methods=[_parse_python_func_node(fn) for fn in top_functions],
+            extends_class=None,
+            implements=[],
+            javadoc=ast.get_docstring(tree),
+            language="python",
+        ))
+
+    return results
+
+
 def build_type_doc_map(source_dir: str, docs_output_dir: str) -> dict:
-    """Build a mapping of class name -> relative doc path for all Java files in the source tree."""
+    """Build a mapping of class/module name -> doc path for all Java and Python files."""
     source_dir = os.path.abspath(source_dir)
     docs_output_dir = os.path.abspath(docs_output_dir)
-    type_map = {}  # class_name -> absolute path of its .md doc file
+    type_map = {}  # name -> absolute path of its .md doc file
 
     for root, dirs, files in os.walk(source_dir):
-        java_files = [f for f in files if f.endswith(".java")]
-        for java_file in java_files:
-            class_name = java_file.replace(".java", "")
-            rel_dir = os.path.relpath(root, source_dir)
-            if rel_dir == ".":
-                doc_path = os.path.join(docs_output_dir, f"{class_name}.md")
-            else:
-                doc_path = os.path.join(docs_output_dir, rel_dir, f"{class_name}.md")
-            type_map[class_name] = os.path.abspath(doc_path)
+        rel_dir = os.path.relpath(root, source_dir)
+        out_dir = docs_output_dir if rel_dir == "." else os.path.join(docs_output_dir, rel_dir)
+
+        for fname in files:
+            if fname.endswith(".java"):
+                class_name = fname[:-5]
+                type_map[class_name] = os.path.abspath(os.path.join(out_dir, f"{class_name}.md"))
+
+            elif fname.endswith(".py"):
+                file_path = os.path.join(root, fname)
+                module_name = fname[:-3]
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        py_source = f.read()
+                    class_names = re.findall(r"^class\s+(\w+)", py_source, re.MULTILINE)
+                    if class_names:
+                        for class_name in class_names:
+                            type_map[class_name] = os.path.abspath(
+                                os.path.join(out_dir, f"{class_name}.md")
+                            )
+                    else:
+                        type_map[module_name] = os.path.abspath(
+                            os.path.join(out_dir, f"{module_name}.md")
+                        )
+                except (IOError, UnicodeDecodeError):
+                    pass
 
     return type_map
 
@@ -568,9 +851,10 @@ def parse_existing_sdd_doc(file_path: str) -> dict:
     }
 
 
-def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir: str, class_name: str) -> str:
+def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir: str, class_name: str, language: str = "java") -> str:
     """Generate a single method section for the API doc."""
     lines = []
+    lang = "python" if language == "python" else "java"
 
     if method.is_constructor:
         lines.append(f"## {method.name} (Constructor)")
@@ -579,7 +863,7 @@ def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir:
     lines.append("")
 
     lines.append("### Signature")
-    lines.append("```java")
+    lines.append("```" + lang)
     if method.annotations:
         for ann in method.annotations:
             lines.append(ann)
@@ -619,9 +903,10 @@ def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir:
     return "\n".join(lines)
 
 
-def generate_sdd_method_section(method: MethodInfo, section_num: int) -> str:
+def generate_sdd_method_section(method: MethodInfo, section_num: int, language: str = "java") -> str:
     """Generate a single method section for the SDD doc."""
     lines = []
+    lang = "python" if language == "python" else "java"
 
     if method.is_constructor:
         lines.append(f"## {section_num}. Constructor")
@@ -629,7 +914,7 @@ def generate_sdd_method_section(method: MethodInfo, section_num: int) -> str:
         lines.append(f"## {section_num}. `{method.name}()`")
     lines.append("")
 
-    lines.append("```java")
+    lines.append("```" + lang)
     if method.annotations:
         for ann in method.annotations:
             lines.append(ann)
@@ -772,7 +1057,7 @@ def merge_api_doc(
 
         # Append new method sections
         for method in new_methods:
-            section = generate_api_method_section(method, type_doc_map, doc_dir, class_info.name)
+            section = generate_api_method_section(method, type_doc_map, doc_dir, class_info.name, class_info.language)
             lines.extend(section.split("\n"))
 
         # Re-append See Also at the very end
@@ -864,7 +1149,7 @@ def merge_sdd_doc(existing_path: str, class_info: JavaClassInfo) -> str:
     next_section_num = parsed["last_section_num"] + 1
     new_sections = []
     for method in new_methods:
-        section = generate_sdd_method_section(method, next_section_num)
+        section = generate_sdd_method_section(method, next_section_num, class_info.language)
         new_sections.append(section)
         next_section_num += 1
 
@@ -939,6 +1224,7 @@ def generate_api_doc(
             lines.append("")
 
     # Method details
+    lang = "python" if class_info.language == "python" else "java"
     lines.append("---")
     lines.append("")
 
@@ -950,7 +1236,7 @@ def generate_api_doc(
         lines.append("")
 
         lines.append("### Signature")
-        lines.append("```java")
+        lines.append("```" + lang)
         if method.annotations:
             for ann in method.annotations:
                 lines.append(ann)
@@ -1034,47 +1320,82 @@ def generate_sdd_doc(
     lines.append("---")
     lines.append("")
 
-    # Section 2: Package & Imports
-    lines.append("## 2. Package Declaration & Imports")
-    lines.append("")
-    lines.append("```java")
-    lines.append(f"package {class_info.package};")
-    lines.append("```")
-    lines.append("")
-
-    if class_info.imports:
+    # Section 2: Package / Module & Imports
+    if class_info.language == "python":
+        lines.append("## 2. Module & Imports")
+        lines.append("")
+        if class_info.imports:
+            lines.append("```python")
+            for imp in class_info.imports:
+                if "." in imp:
+                    parts = imp.rsplit(".", 1)
+                    lines.append(f"from {parts[0]} import {parts[1]}")
+                else:
+                    lines.append(f"import {imp}")
+            lines.append("```")
+            lines.append("")
+            lines.append("| Import | Purpose |")
+            lines.append("|--------|---------|")
+            for imp in class_info.imports:
+                short_name = imp.split(".")[-1]
+                lines.append(f"| `{short_name}` | TODO: describe purpose |")
+            lines.append("")
+    else:
+        lines.append("## 2. Package Declaration & Imports")
+        lines.append("")
         lines.append("```java")
-        for imp in class_info.imports:
-            lines.append(f"import {imp};")
+        lines.append(f"package {class_info.package};")
         lines.append("```")
         lines.append("")
 
-        lines.append("| Import | Purpose |")
-        lines.append("|--------|---------|")
-        for imp in class_info.imports:
-            short_name = imp.split(".")[-1]
-            lines.append(f"| `{short_name}` | TODO: describe purpose |")
-        lines.append("")
+        if class_info.imports:
+            lines.append("```java")
+            for imp in class_info.imports:
+                lines.append(f"import {imp};")
+            lines.append("```")
+            lines.append("")
+
+            lines.append("| Import | Purpose |")
+            lines.append("|--------|---------|")
+            for imp in class_info.imports:
+                short_name = imp.split(".")[-1]
+                lines.append(f"| `{short_name}` | TODO: describe purpose |")
+            lines.append("")
 
     lines.append("---")
     lines.append("")
 
-    # Section 3: Class Declaration
-    lines.append("## 3. Class Declaration")
-    lines.append("")
-    lines.append("```java")
-    lines.append(class_info.class_declaration)
-    lines.append("```")
-    lines.append("")
-
-    if class_info.extends_class:
-        lines.append(
-            f"- **`extends {class_info.extends_class}`** — TODO: explain inheritance."
-        )
-    if class_info.implements:
-        lines.append(
-            f"- **`implements {', '.join(class_info.implements)}`** — TODO: explain interfaces."
-        )
+    # Section 3: Class Declaration / Definition
+    if class_info.language == "python":
+        lines.append("## 3. Class Definition")
+        lines.append("")
+        lines.append("```python")
+        lines.append(class_info.class_declaration)
+        lines.append("```")
+        lines.append("")
+        if class_info.extends_class:
+            lines.append(
+                f"- **`{class_info.extends_class}`** — TODO: explain base class."
+            )
+        if class_info.implements:
+            lines.append(
+                f"- **`{', '.join(class_info.implements)}`** — TODO: explain other base classes."
+            )
+    else:
+        lines.append("## 3. Class Declaration")
+        lines.append("")
+        lines.append("```java")
+        lines.append(class_info.class_declaration)
+        lines.append("```")
+        lines.append("")
+        if class_info.extends_class:
+            lines.append(
+                f"- **`extends {class_info.extends_class}`** — TODO: explain inheritance."
+            )
+        if class_info.implements:
+            lines.append(
+                f"- **`implements {', '.join(class_info.implements)}`** — TODO: explain interfaces."
+            )
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -1084,12 +1405,18 @@ def generate_sdd_doc(
     if class_info.fields:
         lines.append(f"## {section_num}. Instance Fields")
         lines.append("")
-        lines.append("```java")
-        for f in class_info.fields:
-            static_str = "static " if f.is_static else ""
-            final_str = "final " if f.is_final else ""
-            lines.append(f"{f.access} {static_str}{final_str}{f.type} {f.name};")
-        lines.append("```")
+        if class_info.language == "python":
+            lines.append("```python")
+            for f in class_info.fields:
+                lines.append(f"{f.name}: {f.type}" if f.type else f.name)
+            lines.append("```")
+        else:
+            lines.append("```java")
+            for f in class_info.fields:
+                static_str = "static " if f.is_static else ""
+                final_str = "final " if f.is_final else ""
+                lines.append(f"{f.access} {static_str}{final_str}{f.type} {f.name};")
+            lines.append("```")
         lines.append("")
 
         lines.append("| Field | Type | Description |")
@@ -1102,6 +1429,7 @@ def generate_sdd_doc(
         section_num += 1
 
     # Method sections
+    lang = "python" if class_info.language == "python" else "java"
     for method in class_info.methods:
         if method.is_constructor:
             lines.append(f"## {section_num}. Constructor")
@@ -1109,7 +1437,7 @@ def generate_sdd_doc(
             lines.append(f"## {section_num}. `{method.name}()`")
         lines.append("")
 
-        lines.append("```java")
+        lines.append("```" + lang)
         if method.annotations:
             for ann in method.annotations:
                 lines.append(ann)
@@ -1126,11 +1454,99 @@ def generate_sdd_doc(
     return linkify_content(content, type_doc_map, doc_dir, class_info.name)
 
 
+def _process_class_info(
+    class_info: JavaClassInfo,
+    source_file: str,
+    source_dir: str,
+    doc_dir: str,
+    docs_output_dir: str,
+    type_doc_map: dict,
+    overwrite: bool,
+) -> tuple:
+    """Generate or merge API and SDD docs for a single parsed class.
+
+    Returns ``(generated, skipped)`` counts.
+    """
+    base_name = class_info.name
+    api_doc_path = os.path.join(doc_dir, f"{base_name}.md")
+    sdd_doc_path = os.path.join(doc_dir, f"{base_name}_SDD.md")
+    relative_source = compute_relative_source_path(source_file, source_dir, doc_dir)
+
+    api_exists = os.path.exists(api_doc_path)
+    sdd_exists = os.path.exists(sdd_doc_path)
+
+    if overwrite:
+        api_content = generate_api_doc(class_info, relative_source, type_doc_map, doc_dir)
+        with open(api_doc_path, "w", encoding="utf-8") as f:
+            f.write(api_content)
+        print(f"  CREATED: {os.path.relpath(api_doc_path, docs_output_dir)}")
+
+        sdd_content = generate_sdd_doc(
+            class_info, relative_source, f"{base_name}.md", type_doc_map, doc_dir
+        )
+        with open(sdd_doc_path, "w", encoding="utf-8") as f:
+            f.write(sdd_content)
+        print(f"  CREATED: {os.path.relpath(sdd_doc_path, docs_output_dir)}")
+        return 1, 0
+
+    elif api_exists and sdd_exists:
+        merged_api = merge_api_doc(api_doc_path, class_info, type_doc_map, doc_dir, relative_source)
+        merged_sdd = merge_sdd_doc(sdd_doc_path, class_info)
+
+        if merged_api:
+            merged_api = linkify_content(merged_api, type_doc_map, doc_dir, class_info.name)
+            with open(api_doc_path, "w", encoding="utf-8") as f:
+                f.write(merged_api)
+            print(f"  MERGED:  {os.path.relpath(api_doc_path, docs_output_dir)}")
+        else:
+            with open(api_doc_path, "r", encoding="utf-8") as f:
+                api_text = f.read()
+            linked_api = linkify_content(api_text, type_doc_map, doc_dir, class_info.name)
+            if linked_api != api_text:
+                with open(api_doc_path, "w", encoding="utf-8") as f:
+                    f.write(linked_api)
+
+        if merged_sdd:
+            merged_sdd = linkify_content(merged_sdd, type_doc_map, doc_dir, class_info.name)
+            with open(sdd_doc_path, "w", encoding="utf-8") as f:
+                f.write(merged_sdd)
+            print(f"  MERGED:  {os.path.relpath(sdd_doc_path, docs_output_dir)}")
+        else:
+            with open(sdd_doc_path, "r", encoding="utf-8") as f:
+                sdd_text = f.read()
+            linked_sdd = linkify_content(sdd_text, type_doc_map, doc_dir, class_info.name)
+            if linked_sdd != sdd_text:
+                with open(sdd_doc_path, "w", encoding="utf-8") as f:
+                    f.write(linked_sdd)
+
+        if not merged_api and not merged_sdd:
+            print(f"  UP-TO-DATE: {base_name}.md & {base_name}_SDD.md")
+            return 0, 1
+        return 1, 0
+
+    else:
+        if not api_exists:
+            api_content = generate_api_doc(class_info, relative_source, type_doc_map, doc_dir)
+            with open(api_doc_path, "w", encoding="utf-8") as f:
+                f.write(api_content)
+            print(f"  CREATED: {os.path.relpath(api_doc_path, docs_output_dir)}")
+
+        if not sdd_exists:
+            sdd_content = generate_sdd_doc(
+                class_info, relative_source, f"{base_name}.md", type_doc_map, doc_dir
+            )
+            with open(sdd_doc_path, "w", encoding="utf-8") as f:
+                f.write(sdd_content)
+            print(f"  CREATED: {os.path.relpath(sdd_doc_path, docs_output_dir)}")
+        return 1, 0
+
+
 def process_source_directory(
     source_dir: str, docs_output_dir: str, overwrite: bool = False
 ):
     """
     Walk the source directory and generate documentation templates.
+    Supports Java (.java) and Python (.py) source files.
     """
     source_dir = os.path.abspath(source_dir)
     docs_output_dir = os.path.abspath(docs_output_dir)
@@ -1138,124 +1554,42 @@ def process_source_directory(
     # Build type-to-doc-path mapping for cross-referencing
     type_doc_map = build_type_doc_map(source_dir, docs_output_dir)
 
-    # Determine the base package directory structure
-    # We want to mirror subfolders relative to source_dir
     generated_count = 0
     skipped_count = 0
 
     for root, dirs, files in os.walk(source_dir):
-        java_files = [f for f in files if f.endswith(".java")]
-        if not java_files:
+        source_files = [f for f in files if f.endswith(".java") or f.endswith(".py")]
+        if not source_files:
             continue
 
         # Compute relative path from source root
         rel_dir = os.path.relpath(root, source_dir)
-        if rel_dir == ".":
-            # Files at the root of source_dir go directly into docs_output_dir
-            doc_dir = docs_output_dir
-        else:
-            doc_dir = os.path.join(docs_output_dir, rel_dir)
+        doc_dir = docs_output_dir if rel_dir == "." else os.path.join(docs_output_dir, rel_dir)
 
         # Create output directory
         os.makedirs(doc_dir, exist_ok=True)
 
-        for java_file in java_files:
-            source_file = os.path.join(root, java_file)
-            base_name = java_file.replace(".java", "")
-            api_doc_path = os.path.join(doc_dir, f"{base_name}.md")
-            sdd_doc_path = os.path.join(doc_dir, f"{base_name}_SDD.md")
+        for fname in source_files:
+            source_file = os.path.join(root, fname)
 
-            # Parse the Java file
-            class_info = parse_java_file(source_file)
-            if not class_info:
-                print(f"  WARN: Could not parse {java_file}")
-                continue
+            if fname.endswith(".java"):
+                class_info = parse_java_file(source_file)
+                if not class_info:
+                    print(f"  WARN: Could not parse {fname}")
+                    continue
+                infos = [class_info]
+            else:  # .py
+                infos = parse_python_file(source_file)
+                if not infos:
+                    print(f"  WARN: Could not parse {fname}")
+                    continue
 
-            # Compute relative path from doc file to source file
-            relative_source = compute_relative_source_path(
-                source_file, source_dir, doc_dir
-            )
-
-            api_exists = os.path.exists(api_doc_path)
-            sdd_exists = os.path.exists(sdd_doc_path)
-
-            if overwrite:
-                # Full regeneration
-                api_content = generate_api_doc(class_info, relative_source, type_doc_map, doc_dir)
-                with open(api_doc_path, "w", encoding="utf-8") as f:
-                    f.write(api_content)
-                print(f"  CREATED: {os.path.relpath(api_doc_path, docs_output_dir)}")
-
-                sdd_content = generate_sdd_doc(
-                    class_info, relative_source, f"{base_name}.md", type_doc_map, doc_dir
+            for class_info in infos:
+                gen, skip = _process_class_info(
+                    class_info, source_file, source_dir, doc_dir, docs_output_dir, type_doc_map, overwrite
                 )
-                with open(sdd_doc_path, "w", encoding="utf-8") as f:
-                    f.write(sdd_content)
-                print(f"  CREATED: {os.path.relpath(sdd_doc_path, docs_output_dir)}")
-                generated_count += 1
-
-            elif api_exists and sdd_exists:
-                # Merge mode — add missing sections without removing existing content
-                merged_api = merge_api_doc(
-                    api_doc_path,
-                    class_info,
-                    type_doc_map,
-                    doc_dir,
-                    relative_source,
-                )
-                merged_sdd = merge_sdd_doc(sdd_doc_path, class_info)
-
-                if merged_api:
-                    merged_api = linkify_content(merged_api, type_doc_map, doc_dir, class_info.name)
-                    with open(api_doc_path, "w", encoding="utf-8") as f:
-                        f.write(merged_api)
-                    print(f"  MERGED:  {os.path.relpath(api_doc_path, docs_output_dir)}")
-                else:
-                    # Still re-linkify even if no new sections
-                    with open(api_doc_path, "r", encoding="utf-8") as f:
-                        api_text = f.read()
-                    linked_api = linkify_content(api_text, type_doc_map, doc_dir, class_info.name)
-                    if linked_api != api_text:
-                        with open(api_doc_path, "w", encoding="utf-8") as f:
-                            f.write(linked_api)
-
-                if merged_sdd:
-                    merged_sdd = linkify_content(merged_sdd, type_doc_map, doc_dir, class_info.name)
-                    with open(sdd_doc_path, "w", encoding="utf-8") as f:
-                        f.write(merged_sdd)
-                    print(f"  MERGED:  {os.path.relpath(sdd_doc_path, docs_output_dir)}")
-                else:
-                    # Still re-linkify even if no new sections
-                    with open(sdd_doc_path, "r", encoding="utf-8") as f:
-                        sdd_text = f.read()
-                    linked_sdd = linkify_content(sdd_text, type_doc_map, doc_dir, class_info.name)
-                    if linked_sdd != sdd_text:
-                        with open(sdd_doc_path, "w", encoding="utf-8") as f:
-                            f.write(linked_sdd)
-
-                if not merged_api and not merged_sdd:
-                    print(f"  UP-TO-DATE: {base_name}.md & {base_name}_SDD.md")
-                    skipped_count += 1
-                else:
-                    generated_count += 1
-
-            else:
-                # Create new files
-                if not api_exists:
-                    api_content = generate_api_doc(class_info, relative_source, type_doc_map, doc_dir)
-                    with open(api_doc_path, "w", encoding="utf-8") as f:
-                        f.write(api_content)
-                    print(f"  CREATED: {os.path.relpath(api_doc_path, docs_output_dir)}")
-
-                if not sdd_exists:
-                    sdd_content = generate_sdd_doc(
-                        class_info, relative_source, f"{base_name}.md", type_doc_map, doc_dir
-                    )
-                    with open(sdd_doc_path, "w", encoding="utf-8") as f:
-                        f.write(sdd_content)
-                    print(f"  CREATED: {os.path.relpath(sdd_doc_path, docs_output_dir)}")
-
-                generated_count += 1
+                generated_count += gen
+                skipped_count += skip
 
     return generated_count, skipped_count
 
@@ -1264,11 +1598,11 @@ def main():
     Entry point for the documentation generator script. Parses the command-line arguments and passes them forward to other functions.
     """
     parser = argparse.ArgumentParser(
-        description="Generate documentation templates from Java source files."
+        description="Generate documentation templates from Java and Python source files."
     )
     parser.add_argument(
         "source_dir",
-        help="Path to the Java source code root directory (e.g., src/main/java/org/almond/buildinglore)",
+        help="Path to the source code root directory (e.g., src/main/java/org/almond/buildinglore)",
     )
     parser.add_argument(
         "docs_output_dir",
