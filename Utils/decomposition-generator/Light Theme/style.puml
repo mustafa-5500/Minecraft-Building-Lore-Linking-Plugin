@@ -1,0 +1,92 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+@enduml

@@ -22,7 +22,7 @@ import sys
 import argparse
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -31,6 +31,9 @@ class MethodInfo:
     signature: str
     return_type: str
     parameters: List[tuple]  # [(type, name), ...]
+    description: Optional[str] = None
+    parameter_descriptions: Dict[str, str] = field(default_factory=dict)
+    return_description: Optional[str] = None
     annotations: List[str] = field(default_factory=list)
     access: str = "public"
     is_static: bool = False
@@ -59,6 +62,138 @@ class JavaClassInfo:
     implements: List[str] = field(default_factory=list)
     javadoc: Optional[str] = None
     language: str = "java"
+
+
+@dataclass
+class PythonClassDoc:
+    name: str
+    class_declaration: str
+    fields: List[FieldInfo]
+    methods: List[MethodInfo]
+    bases: List[str] = field(default_factory=list)
+    docstring: Optional[str] = None
+
+
+@dataclass
+class PythonModuleDoc:
+    module_name: str
+    file_name: str
+    imports: List[str]
+    classes: List[PythonClassDoc]
+    functions: List[MethodInfo]
+    module_docstring: Optional[str] = None
+
+
+def _parse_python_docstring(doc: Optional[str]) -> tuple:
+    """Parse Python docstring into summary, parameter descriptions, and return description."""
+    if not doc:
+        return None, {}, None
+
+    lines = [line.rstrip() for line in doc.expandtabs().splitlines()]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+
+    summary_lines = []
+    param_desc: Dict[str, str] = {}
+    return_desc_lines = []
+    section = "summary"
+    current_param = None
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        lowered = stripped.lower()
+
+        if lowered in ("args:", "arguments:", "arguements:", "parameters:"):
+            section = "params"
+            current_param = None
+            i += 1
+            continue
+        if lowered in ("return:", "returns:"):
+            section = "returns"
+            current_param = None
+            i += 1
+            continue
+        if re.match(r"^[A-Za-z ]+:$", stripped) and lowered not in ("args:", "arguments:", "arguements:", "parameters:", "return:", "returns:"):
+            section = "other"
+            current_param = None
+            i += 1
+            continue
+
+        if section == "summary":
+            summary_lines.append(line)
+        elif section == "params":
+            param_match = re.match(r"^\s*([*]{0,2}[A-Za-z_][\w]*)\s*(?:\([^)]*\))?\s*:\s*(.*)$", line)
+            if param_match:
+                current_param = param_match.group(1).lstrip("*")
+                desc = param_match.group(2).strip()
+                param_desc[current_param] = desc
+            elif current_param and line.startswith(" "):
+                extra = stripped
+                if extra:
+                    existing = param_desc.get(current_param, "")
+                    param_desc[current_param] = f"{existing} {extra}".strip()
+        elif section == "returns":
+            if stripped:
+                return_desc_lines.append(stripped)
+
+        i += 1
+
+    summary = "\n".join(summary_lines).strip() or None
+    ret_desc = " ".join(return_desc_lines).strip() or None
+    return summary, param_desc, ret_desc
+
+
+def _parse_java_method_doc(doc: Optional[str]) -> tuple:
+    """Parse JavaDoc text into summary, parameter descriptions, and return description."""
+    if not doc:
+        return None, {}, None
+
+    lines = [line.rstrip() for line in doc.splitlines()]
+    summary_lines = []
+    param_desc: Dict[str, str] = {}
+    return_desc = None
+    current_tag = None
+    current_param = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if current_tag is None:
+                summary_lines.append("")
+            continue
+
+        param_match = re.match(r"^@param\s+(\w+)\s*(.*)$", stripped)
+        if param_match:
+            current_tag = "param"
+            current_param = param_match.group(1)
+            param_desc[current_param] = param_match.group(2).strip()
+            continue
+
+        return_match = re.match(r"^@return\s*(.*)$", stripped)
+        if return_match:
+            current_tag = "return"
+            current_param = None
+            return_desc = return_match.group(1).strip()
+            continue
+
+        if stripped.startswith("@"):
+            current_tag = "other"
+            current_param = None
+            continue
+
+        if current_tag == "param" and current_param:
+            param_desc[current_param] = f"{param_desc.get(current_param, '')} {stripped}".strip()
+        elif current_tag == "return":
+            return_desc = f"{(return_desc or '')} {stripped}".strip()
+        else:
+            summary_lines.append(line)
+
+    summary = "\n".join(summary_lines).strip() or None
+    return summary, param_desc, (return_desc or None)
 
 
 def parse_java_file(file_path: str) -> Optional[JavaClassInfo]:
@@ -186,6 +321,27 @@ def extract_methods(content: str, class_name: str) -> List[MethodInfo]:
     """Extract method signatures from the class."""
     methods = []
 
+    def clean_javadoc(raw: str) -> str:
+        """Normalize a JavaDoc block body into plain markdown text."""
+        return re.sub(r"^\s*\*\s?", "", raw, flags=re.MULTILINE).strip()
+
+    def extract_method_javadoc(start_idx: int) -> Optional[str]:
+        """Extract JavaDoc immediately preceding a method/constructor declaration."""
+        prefix = content[:start_idx]
+        last_match = None
+        for match in re.finditer(r"/\*\*(.*?)\*/", prefix, re.DOTALL):
+            last_match = match
+
+        if not last_match:
+            return None
+
+        between = prefix[last_match.end():]
+        # Allow only whitespace and annotations between JavaDoc and declaration.
+        if not re.match(r"^\s*(?:@\w+(?:\([^)]*\))?\s*)*$", between, re.DOTALL):
+            return None
+
+        return clean_javadoc(last_match.group(1))
+
     # Pattern for method declarations
     method_pattern = re.compile(
         r"(?:(@\w+(?:\([^)]*\))?)\s+)?"  # optional annotation
@@ -214,6 +370,8 @@ def extract_methods(content: str, class_name: str) -> List[MethodInfo]:
         access = match.group(2)
         params_raw = match.group(3).strip()
         parameters = parse_parameters(params_raw)
+        raw_doc = extract_method_javadoc(match.start())
+        description, parameter_descriptions, return_description = _parse_java_method_doc(raw_doc)
 
         annotations = [annotation] if annotation else []
         sig = f"{access} {class_name}({params_raw})"
@@ -224,6 +382,9 @@ def extract_methods(content: str, class_name: str) -> List[MethodInfo]:
                 signature=sig,
                 return_type="",
                 parameters=parameters,
+                description=description,
+                parameter_descriptions=parameter_descriptions,
+                return_description=return_description,
                 annotations=annotations,
                 access=access,
                 is_static=False,
@@ -239,6 +400,8 @@ def extract_methods(content: str, class_name: str) -> List[MethodInfo]:
         return_type = match.group(4).strip()
         method_name = match.group(5).strip()
         params_raw = match.group(6).strip()
+        raw_doc = extract_method_javadoc(match.start())
+        description, parameter_descriptions, return_description = _parse_java_method_doc(raw_doc)
 
         # Skip if this is actually a constructor (caught above)
         if method_name == class_name:
@@ -256,6 +419,9 @@ def extract_methods(content: str, class_name: str) -> List[MethodInfo]:
                 signature=sig,
                 return_type=return_type,
                 parameters=parameters,
+                description=description,
+                parameter_descriptions=parameter_descriptions,
+                return_description=return_description,
                 annotations=annotations,
                 access=access,
                 is_static=is_static,
@@ -447,11 +613,17 @@ def _parse_python_func_node(func_node) -> MethodInfo:
     else:
         access = "public"
 
+    raw_doc = ast.get_docstring(func_node)
+    description, parameter_descriptions, return_description = _parse_python_docstring(raw_doc)
+
     return MethodInfo(
         name=name,
         signature=signature,
         return_type=return_type,
         parameters=param_list,
+        description=description,
+        parameter_descriptions=parameter_descriptions,
+        return_description=return_description,
         annotations=decorators,
         access=access,
         is_static=is_static,
@@ -459,10 +631,8 @@ def _parse_python_func_node(func_node) -> MethodInfo:
     )
 
 
-def _parse_python_class_node(
-    class_node: ast.ClassDef, file_name: str, imports: List[str]
-) -> JavaClassInfo:
-    """Convert an AST ``ClassDef`` node into a ``JavaClassInfo``."""
+def _parse_python_class_node(class_node: ast.ClassDef) -> PythonClassDoc:
+    """Convert an AST ``ClassDef`` node into a ``PythonClassDoc``."""
     class_name = class_node.name
     bases = []
     for base in class_node.bases:
@@ -479,33 +649,24 @@ def _parse_python_class_node(
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
 
-    return JavaClassInfo(
+    return PythonClassDoc(
         name=class_name,
-        file_name=file_name,
-        package="",
-        imports=imports,
         class_declaration=class_decl,
         fields=fields,
         methods=methods,
-        extends_class=bases[0] if bases else None,
-        implements=bases[1:] if len(bases) > 1 else [],
-        javadoc=ast.get_docstring(class_node),
-        language="python",
+        bases=bases,
+        docstring=ast.get_docstring(class_node),
     )
 
 
-def parse_python_file(file_path: str) -> List[JavaClassInfo]:
-    """Parse a Python source file and return one ``JavaClassInfo`` per top-level class.
-
-    If no classes are found but module-level functions exist, returns a single
-    ``JavaClassInfo`` representing the module itself.
-    """
+def parse_python_file(file_path: str) -> Optional[PythonModuleDoc]:
+    """Parse a Python source file into a single module-level documentation model."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
         tree = ast.parse(source, filename=file_path)
     except (IOError, SyntaxError, UnicodeDecodeError):
-        return []
+        return None
 
     file_name = os.path.basename(file_path)
     module_name = file_name[:-3]  # strip .py
@@ -526,26 +687,17 @@ def parse_python_file(file_path: str) -> List[JavaClassInfo]:
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
 
-    results: List[JavaClassInfo] = [
-        _parse_python_class_node(cls, file_name, imports) for cls in top_classes
-    ]
+    classes = [_parse_python_class_node(cls) for cls in top_classes]
+    functions = [_parse_python_func_node(fn) for fn in top_functions]
 
-    if not top_classes and top_functions:
-        results.append(JavaClassInfo(
-            name=module_name,
-            file_name=file_name,
-            package="",
-            imports=imports,
-            class_declaration=f"# module: {module_name}",
-            fields=[],
-            methods=[_parse_python_func_node(fn) for fn in top_functions],
-            extends_class=None,
-            implements=[],
-            javadoc=ast.get_docstring(tree),
-            language="python",
-        ))
-
-    return results
+    return PythonModuleDoc(
+        module_name=module_name,
+        file_name=file_name,
+        imports=imports,
+        classes=classes,
+        functions=functions,
+        module_docstring=ast.get_docstring(tree),
+    )
 
 
 def build_type_doc_map(source_dir: str, docs_output_dir: str) -> dict:
@@ -566,20 +718,20 @@ def build_type_doc_map(source_dir: str, docs_output_dir: str) -> dict:
             elif fname.endswith(".py"):
                 file_path = os.path.join(root, fname)
                 module_name = fname[:-3]
+                target_doc = os.path.abspath(
+                    os.path.join(out_dir, f"{module_name}.md")
+                )
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         py_source = f.read()
-                    class_names = re.findall(r"^class\s+(\w+)", py_source, re.MULTILINE)
-                    if class_names:
-                        for class_name in class_names:
-                            type_map[class_name] = os.path.abspath(
-                                os.path.join(out_dir, f"{class_name}.md")
-                            )
-                    else:
-                        type_map[module_name] = os.path.abspath(
-                            os.path.join(out_dir, f"{module_name}.md")
-                        )
-                except (IOError, UnicodeDecodeError):
+                    tree = ast.parse(py_source, filename=file_path)
+                    class_names = [
+                        node.name for node in tree.body if isinstance(node, ast.ClassDef)
+                    ]
+                    type_map[module_name] = target_doc
+                    for class_name in class_names:
+                        type_map[class_name] = target_doc
+                except (IOError, UnicodeDecodeError, SyntaxError):
                     pass
 
     return type_map
@@ -710,6 +862,274 @@ def normalize_api_header(
     return build_api_header(class_info, relative_source_path) + lines[start:]
 
 
+def _extract_level2_section(lines: List[str], section_title: str) -> tuple:
+    """Extract a level-2 section by title and return (section_lines, remaining_lines)."""
+    start = -1
+    for i, line in enumerate(lines):
+        match = re.match(r"^##\s+(.+?)\s*$", line.strip())
+        if match and match.group(1).strip().lower() == section_title.lower():
+            start = i
+            break
+
+    if start == -1:
+        return [], lines[:]
+
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if re.match(r"^##\s+", lines[i].strip()):
+            end = i
+            break
+
+    return lines[start:end], lines[:start] + lines[end:]
+
+
+def _trim_outer_blank_lines(lines: List[str]) -> List[str]:
+    """Trim blank lines at the start and end of a line list."""
+    result = lines[:]
+    while result and not result[0].strip():
+        result.pop(0)
+    while result and not result[-1].strip():
+        result.pop()
+    return result
+
+
+def _heading_to_anchor(heading: str) -> str:
+    """Convert a markdown heading text into a GitHub-style anchor."""
+    anchor = heading.strip().lower()
+    anchor = anchor.replace("`", "")
+    anchor = re.sub(r"[^\w\s-]", "", anchor)
+    anchor = re.sub(r"\s+", "-", anchor)
+    anchor = re.sub(r"-+", "-", anchor).strip("-")
+    return anchor
+
+
+def _build_toc_section(lines: List[str], include_usage: bool = True) -> List[str]:
+    """Build a Table of Contents section from level-2 headings in the document body."""
+    entries = []
+    seen = set()
+
+    if include_usage:
+        entries.append("- [Usage](#usage)")
+        seen.add("usage")
+
+    for line in lines:
+        match = re.match(r"^##\s+(.+?)\s*$", line.strip())
+        if not match:
+            continue
+        heading = match.group(1).strip()
+        if heading.lower() in ("table of contents", "usage"):
+            continue
+        anchor = _heading_to_anchor(heading)
+        if not anchor or anchor in seen:
+            continue
+        entries.append(f"- [{heading}](#{anchor})")
+        seen.add(anchor)
+
+    return ["## Table of Contents", "", *entries, ""]
+
+
+def _extract_header_block(lines: List[str]) -> tuple:
+    """Extract markdown title + blockquote header block from the top of a doc."""
+    if not lines:
+        return [], []
+
+    idx = 0
+    header = []
+
+    if lines[0].startswith("# "):
+        header.append(lines[0])
+        idx = 1
+
+    while idx < len(lines) and not lines[idx].strip():
+        header.append(lines[idx])
+        idx += 1
+
+    while idx < len(lines) and lines[idx].startswith("> "):
+        header.append(lines[idx])
+        idx += 1
+
+    while idx < len(lines) and not lines[idx].strip():
+        header.append(lines[idx])
+        idx += 1
+
+    return header, lines[idx:]
+
+
+def _enforce_usage_and_toc_layout(
+    lines: List[str],
+    usage_placeholder: List[str],
+) -> List[str]:
+    """Ensure docs follow Header -> TOC -> Usage ordering and refresh TOC entries."""
+    header, body = _extract_header_block(lines)
+
+    usage_section, body = _extract_level2_section(body, "Usage")
+    _toc_section, body = _extract_level2_section(body, "Table of Contents")
+
+    usage_block = _trim_outer_blank_lines(usage_section) if usage_section else usage_placeholder[:]
+    body = _trim_outer_blank_lines(body)
+
+    rebuilt_toc = _build_toc_section(body, include_usage=True)
+
+    result = []
+    result.extend(header)
+    if result and result[-1].strip():
+        result.append("")
+
+    result.extend(rebuilt_toc)
+    result.append("")
+    result.extend(usage_block)
+
+    if body:
+        result.append("")
+        result.extend(body)
+
+    while len(result) > 1 and not result[-1].strip() and not result[-2].strip():
+        result.pop()
+
+    return result
+
+
+def _inject_api_method_descriptions(lines: List[str], class_info: JavaClassInfo) -> List[str]:
+    """Replace default API TODO method descriptions with parsed docstrings/Javadocs."""
+    method_map = {}
+    for method in class_info.methods:
+        heading = f"## {method.name} (Constructor)" if method.is_constructor else f"## {method.name}"
+        method_map[heading] = method
+
+    if not method_map:
+        return lines
+
+    updated = lines[:]
+    i = 0
+    while i < len(updated):
+        if updated[i].startswith("## "):
+            section_heading = updated[i].strip()
+            method = method_map.get(section_heading)
+            if method:
+                section_end = len(updated)
+                for j in range(i + 1, len(updated)):
+                    if updated[j].startswith("## "):
+                        section_end = j
+                        break
+
+                for j in range(i + 1, section_end):
+                    if updated[j].strip() == "### Description":
+                        k = j + 1
+                        while k < section_end and not updated[k].strip():
+                            k += 1
+                        should_replace = False
+                        if method.description and k < section_end:
+                            if updated[k].strip().startswith("TODO: Describe what `"):
+                                should_replace = True
+                            else:
+                                desc_block_end = section_end
+                                for d in range(k, section_end):
+                                    if updated[d].startswith("### "):
+                                        desc_block_end = d
+                                        break
+                                current_desc = "\n".join(updated[k:desc_block_end])
+                                if (
+                                    "Arguments:" in current_desc
+                                    or "Arguements:" in current_desc
+                                    or "Returns:" in current_desc
+                                ):
+                                    should_replace = True
+
+                        if should_replace:
+                            replacement = method.description.strip().split("\n")
+                            desc_block_end = section_end
+                            for d in range(k, section_end):
+                                if updated[d].startswith("### "):
+                                    desc_block_end = d
+                                    break
+                            updated = updated[:k] + replacement + updated[desc_block_end:]
+
+                        # Recompute section end after any edits above.
+                        section_end = len(updated)
+                        for d in range(i + 1, len(updated)):
+                            if updated[d].startswith("## "):
+                                section_end = d
+                                break
+                        break
+
+                # Fill parameter description placeholders from doc metadata.
+                for j in range(i + 1, section_end):
+                    match = re.match(r"^\| `([^`]+)` \| (.+?) \| TODO: describe \|$", updated[j])
+                    if not match:
+                        continue
+                    param_name = match.group(1)
+                    param_type = match.group(2)
+                    param_text = method.parameter_descriptions.get(param_name)
+                    if param_text:
+                        updated[j] = f"| `{param_name}` | {param_type} | {param_text} |"
+
+                # Fill return placeholder if available.
+                if method.return_description:
+                    for j in range(i + 1, section_end):
+                        if "— TODO: describe return value." in updated[j]:
+                            updated[j] = updated[j].replace(
+                                "— TODO: describe return value.",
+                                f"— {method.return_description}",
+                            )
+                            break
+        i += 1
+
+    return updated
+
+
+def _inject_sdd_method_descriptions(lines: List[str], class_info: JavaClassInfo) -> List[str]:
+    """Replace default SDD TODO method descriptions with parsed docstrings/Javadocs."""
+    method_to_description = {}
+    constructor_description = None
+    for method in class_info.methods:
+        if not method.description:
+            continue
+        if method.is_constructor:
+            constructor_description = method.description.strip()
+        else:
+            method_to_description[method.name] = method.description.strip()
+
+    if not method_to_description and not constructor_description:
+        return lines
+
+    updated = lines[:]
+    i = 0
+    while i < len(updated):
+        heading_match = re.match(r"^##\s+\d+\.\s+(.+?)\s*$", updated[i].strip())
+        if not heading_match:
+            i += 1
+            continue
+
+        label = heading_match.group(1).strip()
+        description = None
+        if label == "Constructor":
+            description = constructor_description
+        else:
+            name_match = re.match(r"^`(\w+)\(\)`$", label)
+            if name_match:
+                description = method_to_description.get(name_match.group(1))
+
+        if not description:
+            i += 1
+            continue
+
+        section_end = len(updated)
+        for j in range(i + 1, len(updated)):
+            if updated[j].startswith("## "):
+                section_end = j
+                break
+
+        for j in range(i + 1, section_end):
+            if updated[j].strip().startswith("TODO: Provide detailed design explanation for `"):
+                replacement = description.split("\n")
+                updated = updated[:j] + replacement + updated[j + 1:]
+                break
+
+        i += 1
+
+    return updated
+
+
 # =============================================================================
 # Merge Logic — update existing docs without losing manual content
 # =============================================================================
@@ -741,14 +1161,14 @@ def parse_existing_api_doc(file_path: str) -> dict:
 
     for i, line in enumerate(lines):
         # Detect fields section
-        if line.startswith("**Fields:**"):
+        if line.startswith("**Fields:**") or line.strip() == "## Fields":
             in_fields = True
             continue
         if in_fields:
             field_match = re.match(r"^- `(\w+)`", line)
             if field_match:
                 documented_fields.add(field_match.group(1))
-            elif not line.strip():
+            elif (not line.strip()) or line.startswith("## "):
                 in_fields = False
 
         # Detect Functions TOC
@@ -872,7 +1292,10 @@ def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir:
     lines.append("")
 
     lines.append("### Description")
-    lines.append(f"TODO: Describe what `{method.name}` does.")
+    if method.description:
+        lines.append(method.description)
+    else:
+        lines.append(f"TODO: Describe what `{method.name}` does.")
     lines.append("")
 
     if method.parameters:
@@ -881,7 +1304,8 @@ def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir:
         lines.append("|------|------|-------------|")
         for ptype, pname in method.parameters:
             type_link = resolve_type_link(ptype, type_doc_map, doc_dir, class_name)
-            lines.append(f"| `{pname}` | {type_link} | TODO: describe |")
+            param_text = method.parameter_descriptions.get(pname, "TODO: describe")
+            lines.append(f"| `{pname}` | {type_link} | {param_text} |")
         lines.append("")
     else:
         lines.append("### Parameters")
@@ -895,7 +1319,8 @@ def generate_api_method_section(method: MethodInfo, type_doc_map: dict, doc_dir:
         lines.append("`void`")
     else:
         ret_link = resolve_type_link(method.return_type, type_doc_map, doc_dir, class_name)
-        lines.append(f"{ret_link} — TODO: describe return value.")
+        ret_text = method.return_description or "TODO: describe return value."
+        lines.append(f"{ret_link} — {ret_text}")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -921,7 +1346,10 @@ def generate_sdd_method_section(method: MethodInfo, section_num: int, language: 
     lines.append(method.signature)
     lines.append("```")
     lines.append("")
-    lines.append(f"TODO: Provide detailed design explanation for `{method.name}`.")
+    if method.description:
+        lines.append(method.description)
+    else:
+        lines.append(f"TODO: Provide detailed design explanation for `{method.name}`.")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -939,11 +1367,11 @@ def merge_api_doc(
     """Merge new methods/fields into an existing API doc without removing existing content."""
     parsed = parse_existing_api_doc(existing_path)
     original_lines = parsed["lines"]
+    original_text = parsed["content"]
     lines = normalize_api_header(original_lines, class_info, relative_source_path)
 
     new_fields = []
     new_methods = []
-    new_toc_entries = []
 
     # Find fields that are in source but not in the doc
     for f in class_info.fields:
@@ -951,25 +1379,11 @@ def merge_api_doc(
             type_link = resolve_type_link(f.type, type_doc_map, doc_dir, class_info.name)
             new_fields.append(f"- `{f.name}` ({type_link}) — TODO: describe field")
 
-    # Collect existing TOC entries to avoid duplicates
-    existing_toc_names = set()
-    for line in lines:
-        toc_match = re.match(r"^- \[(.+?)\]\(#", line)
-        if toc_match:
-            existing_toc_names.add(toc_match.group(1).lower())
-
     # Find methods that are in source but not in the doc
     for method in class_info.methods:
         method_doc_name = method.name
         if method_doc_name not in parsed["documented_methods"]:
             new_methods.append(method)
-            display_name = method.name if not method.is_constructor else f"{method.name} (Constructor)"
-            anchor = method.name.lower().replace(" ", "-")
-            # Only add TOC entry if not already present
-            if display_name.lower() not in existing_toc_names:
-                new_toc_entries.append(f"- [{display_name}](#{anchor})")
-
-    header_changed = lines != original_lines
 
     if not new_fields and not new_methods:
         # Still check if See Also section needs to be moved to end
@@ -987,7 +1401,18 @@ def merge_api_doc(
         if see_also_found and not see_also_at_end:
             pass  # Fall through to the repositioning logic below
         else:
-            return "\n".join(lines) if header_changed else None
+            lines = _inject_api_method_descriptions(lines, class_info)
+            lines = _enforce_usage_and_toc_layout(
+                lines,
+                [
+                    "## Usage",
+                    "",
+                    f"TODO: Add usage examples for `{class_info.name}`.",
+                    "",
+                ],
+            )
+            final_text = "\n".join(lines)
+            return final_text if final_text != original_text else None
 
     # Insert new fields into the fields section
     if new_fields:
@@ -995,36 +1420,18 @@ def merge_api_doc(
         fields_end = -1
         in_fields = False
         for i, line in enumerate(lines):
-            if line.startswith("**Fields:**"):
+            if line.startswith("**Fields:**") or line.strip() == "## Fields":
                 in_fields = True
                 continue
             if in_fields:
                 if re.match(r"^- `\w+`", line):
                     fields_end = i
-                elif not line.strip():
+                elif (not line.strip()) or line.startswith("## "):
                     break
         if fields_end >= 0:
             # Insert after the last field line
             for j, new_field in enumerate(new_fields):
                 lines.insert(fields_end + 1 + j, new_field)
-
-    # Insert new TOC entries
-    if new_toc_entries and parsed["toc_end_line"] >= 0:
-        # Recalculate toc_end_line after potential field insertions
-        toc_end = -1
-        in_toc = False
-        for i, line in enumerate(lines):
-            if line.startswith("**Functions:**"):
-                in_toc = True
-                continue
-            if in_toc:
-                if line.startswith("- ["):
-                    toc_end = i
-                elif not line.strip():
-                    break
-        if toc_end >= 0:
-            for j, entry in enumerate(new_toc_entries):
-                lines.insert(toc_end + 1 + j, entry)
 
     # Insert new method sections before the See Also section (or at end)
     if new_methods:
@@ -1128,13 +1535,27 @@ def merge_api_doc(
             lines.append("")
             lines.extend(see_also_lines)
 
-    return "\n".join(lines)
+    lines = _inject_api_method_descriptions(lines, class_info)
+
+    lines = _enforce_usage_and_toc_layout(
+        lines,
+        [
+            "## Usage",
+            "",
+            f"TODO: Add usage examples for `{class_info.name}`.",
+            "",
+        ],
+    )
+
+    final_text = "\n".join(lines)
+    return final_text if final_text != original_text else None
 
 
 def merge_sdd_doc(existing_path: str, class_info: JavaClassInfo) -> str:
     """Merge new method sections into an existing SDD doc without removing existing content."""
     parsed = parse_existing_sdd_doc(existing_path)
     lines = parsed["lines"]
+    original_text = parsed["content"]
 
     new_methods = []
     for method in class_info.methods:
@@ -1143,7 +1564,18 @@ def merge_sdd_doc(existing_path: str, class_info: JavaClassInfo) -> str:
             new_methods.append(method)
 
     if not new_methods:
-        return None  # Nothing to merge
+        lines = _inject_sdd_method_descriptions(lines, class_info)
+        lines = _enforce_usage_and_toc_layout(
+            lines,
+            [
+                "## Usage",
+                "",
+                f"TODO: Describe how `{class_info.name}` is instantiated and used.",
+                "",
+            ],
+        )
+        final_text = "\n".join(lines)
+        return final_text if final_text != original_text else None
 
     # Append new sections at the end of the file
     next_section_num = parsed["last_section_num"] + 1
@@ -1161,7 +1593,20 @@ def merge_sdd_doc(existing_path: str, class_info: JavaClassInfo) -> str:
     for section in new_sections:
         lines.extend(section.split("\n"))
 
-    return "\n".join(lines)
+    lines = _inject_sdd_method_descriptions(lines, class_info)
+
+    lines = _enforce_usage_and_toc_layout(
+        lines,
+        [
+            "## Usage",
+            "",
+            f"TODO: Describe how `{class_info.name}` is instantiated and used.",
+            "",
+        ],
+    )
+
+    final_text = "\n".join(lines)
+    return final_text if final_text != original_text else None
 
 
 def generate_api_doc(
@@ -1173,24 +1618,33 @@ def generate_api_doc(
         type_doc_map = {}
     lines = build_api_header(class_info, relative_source_path)
 
+    lines.append("## Table of Contents")
+    lines.append("")
+    lines.append("- [Usage](#usage)")
+    if class_info.fields:
+        lines.append("- [Fields](#fields)")
+    if class_info.methods:
+        seen_names = set()
+        for m in class_info.methods:
+            heading = m.name if not m.is_constructor else f"{m.name} (Constructor)"
+            anchor = _heading_to_anchor(heading)
+            if anchor not in seen_names:
+                lines.append(f"- [{heading}](#{anchor})")
+                seen_names.add(anchor)
+    lines.append("- [See Also](#see-also)")
+    lines.append("")
+
+    lines.append("## Usage")
+    lines.append("")
+    lines.append(f"TODO: Add usage examples for `{class_info.name}`.")
+    lines.append("")
+
     # Description placeholder
     if class_info.javadoc:
         lines.append(class_info.javadoc)
     else:
         lines.append(f"TODO: Add description for `{class_info.name}`.")
     lines.append("")
-
-    # Fields section
-    if class_info.fields:
-        lines.append("---")
-        lines.append("")
-        lines.append("## Table of Contents")
-        lines.append("")
-        lines.append("**Fields:**")
-        for f in class_info.fields:
-            type_link = resolve_type_link(f.type, type_doc_map, doc_dir, class_info.name)
-            lines.append(f"- `{f.name}` ({type_link}) — TODO: describe field")
-        lines.append("")
 
     # Constants section
     constants = [f for f in class_info.fields if f.is_static and f.is_final]
@@ -1201,27 +1655,16 @@ def generate_api_doc(
         # Already listed all above, no need to separate
         pass
 
-    # Functions table of contents
-    if class_info.methods:
-        public_methods = [m for m in class_info.methods if m.access == "public"]
-        private_methods = [m for m in class_info.methods if m.access != "public"]
-        
-        all_display_methods = public_methods + private_methods
-        if all_display_methods:
-            if not class_info.fields:
-                lines.append("---")
-                lines.append("")
-                lines.append("## Table of Contents")
-                lines.append("")
-            lines.append("**Functions:**")
-            seen_names = set()
-            for m in all_display_methods:
-                display_name = m.name if not m.is_constructor else f"{m.name} (Constructor)"
-                anchor = m.name.lower().replace(" ", "-")
-                if m.name not in seen_names:
-                    lines.append(f"- [{display_name}](#{anchor})")
-                    seen_names.add(m.name)
-            lines.append("")
+    # Fields section
+    if class_info.fields:
+        lines.append("---")
+        lines.append("")
+        lines.append("## Fields")
+        lines.append("")
+        for f in class_info.fields:
+            type_link = resolve_type_link(f.type, type_doc_map, doc_dir, class_info.name)
+            lines.append(f"- `{f.name}` ({type_link}) — TODO: describe field")
+        lines.append("")
 
     # Method details
     lang = "python" if class_info.language == "python" else "java"
@@ -1245,7 +1688,10 @@ def generate_api_doc(
         lines.append("")
 
         lines.append("### Description")
-        lines.append(f"TODO: Describe what `{method.name}` does.")
+        if method.description:
+            lines.append(method.description)
+        else:
+            lines.append(f"TODO: Describe what `{method.name}` does.")
         lines.append("")
 
         if method.parameters:
@@ -1254,7 +1700,8 @@ def generate_api_doc(
             lines.append("|------|------|-------------|")
             for ptype, pname in method.parameters:
                 type_link = resolve_type_link(ptype, type_doc_map, doc_dir, class_info.name)
-                lines.append(f"| `{pname}` | {type_link} | TODO: describe |")
+                param_text = method.parameter_descriptions.get(pname, "TODO: describe")
+                lines.append(f"| `{pname}` | {type_link} | {param_text} |")
             lines.append("")
         else:
             lines.append("### Parameters")
@@ -1268,7 +1715,8 @@ def generate_api_doc(
             lines.append("`void`")
         else:
             ret_link = resolve_type_link(method.return_type, type_doc_map, doc_dir, class_info.name)
-            lines.append(f"{ret_link} — TODO: describe return value.")
+            ret_text = method.return_description or "TODO: describe return value."
+            lines.append(f"{ret_link} — {ret_text}")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -1306,6 +1754,49 @@ def generate_sdd_doc(
         f"> **Source File:** [{class_info.file_name}]({relative_source_path})"
     )
     lines.append("")
+
+    toc_entries = [
+        "- [Usage](#usage)",
+        f"- [1. Overview](#{_heading_to_anchor('1. Overview')})",
+    ]
+    if class_info.language == "python":
+        toc_entries.append(
+            f"- [2. Module & Imports](#{_heading_to_anchor('2. Module & Imports')})"
+        )
+        toc_entries.append(
+            f"- [3. Class Definition](#{_heading_to_anchor('3. Class Definition')})"
+        )
+    else:
+        toc_entries.append(
+            f"- [2. Package Declaration & Imports](#{_heading_to_anchor('2. Package Declaration & Imports')})"
+        )
+        toc_entries.append(
+            f"- [3. Class Declaration](#{_heading_to_anchor('3. Class Declaration')})"
+        )
+    if class_info.fields:
+        toc_entries.append(
+            f"- [4. Instance Fields](#{_heading_to_anchor('4. Instance Fields')})"
+        )
+
+    section_num = 5 if class_info.fields else 4
+    for method in class_info.methods:
+        if method.is_constructor:
+            heading = f"{section_num}. Constructor"
+        else:
+            heading = f"{section_num}. `{method.name}()`"
+        toc_entries.append(f"- [{heading}](#{_heading_to_anchor(heading)})")
+        section_num += 1
+
+    lines.append("## Table of Contents")
+    lines.append("")
+    lines.extend(toc_entries)
+    lines.append("")
+
+    lines.append("## Usage")
+    lines.append("")
+    lines.append(f"TODO: Describe how `{class_info.name}` is instantiated and used.")
+    lines.append("")
+
     lines.append("---")
     lines.append("")
 
@@ -1444,7 +1935,10 @@ def generate_sdd_doc(
         lines.append(method.signature)
         lines.append("```")
         lines.append("")
-        lines.append(f"TODO: Provide detailed design explanation for `{method.name}`.")
+        if method.description:
+            lines.append(method.description)
+        else:
+            lines.append(f"TODO: Provide detailed design explanation for `{method.name}`.")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -1541,6 +2035,336 @@ def _process_class_info(
         return 1, 0
 
 
+def generate_python_module_api_doc(
+    module_info: PythonModuleDoc,
+    relative_source_path: str,
+    type_doc_map: dict = None,
+    doc_dir: str = "",
+) -> str:
+    """Generate a module-level API documentation file for a Python source file."""
+    if type_doc_map is None:
+        type_doc_map = {}
+
+    lines: List[str] = [
+        f"# {module_info.module_name}",
+        "",
+        f"> **Software Detailed Documentation:** [{module_info.module_name}_SDD.md](./{module_info.module_name}_SDD.md)  ",
+        f"> **Source File:** [{module_info.file_name}]({relative_source_path})",
+        "",
+    ]
+
+    lines.append("## Table of Contents")
+    lines.append("")
+    lines.append("- [Usage](#usage)")
+    if module_info.classes:
+        lines.append("- [Classes](#classes)")
+        for cls in module_info.classes:
+            lines.append(f"- [Class `{cls.name}`](#class-{cls.name.lower()})")
+    if module_info.functions:
+        lines.append("- [Module Functions](#module-functions)")
+    lines.append("- [See Also](#see-also)")
+    lines.append("")
+
+    lines.append("## Usage")
+    lines.append("")
+    lines.append(f"TODO: Add usage examples for `{module_info.module_name}`.")
+    lines.append("")
+
+    if module_info.module_docstring:
+        lines.append(module_info.module_docstring)
+    else:
+        lines.append(f"TODO: Add module description for `{module_info.module_name}`.")
+    lines.append("")
+
+    if module_info.imports:
+        lines.append("## Imports")
+        lines.append("")
+        for imp in module_info.imports:
+            lines.append(f"- `{imp}`")
+        lines.append("")
+
+    if module_info.classes:
+        lines.append("## Classes")
+        lines.append("")
+        for cls in module_info.classes:
+            lines.append(f"### Class `{cls.name}`")
+            lines.append("")
+            lines.append("#### Declaration")
+            lines.append("```python")
+            lines.append(cls.class_declaration)
+            lines.append("```")
+            lines.append("")
+
+            if cls.docstring:
+                lines.append(cls.docstring)
+            else:
+                lines.append(f"TODO: Add description for class `{cls.name}`.")
+            lines.append("")
+
+            if cls.fields:
+                lines.append("#### Fields")
+                lines.append("")
+                lines.append("| Name | Type | Description |")
+                lines.append("|------|------|-------------|")
+                for field in cls.fields:
+                    field_type = field.type or "Any"
+                    field_type_link = resolve_type_link(field_type, type_doc_map, doc_dir, cls.name)
+                    lines.append(f"| `{field.name}` | {field_type_link} | TODO: describe field |")
+                lines.append("")
+
+            if cls.methods:
+                lines.append("#### Methods")
+                lines.append("")
+                for method in cls.methods:
+                    method_title = f"{cls.name}.{method.name}"
+                    lines.append(f"##### {method_title}")
+                    lines.append("")
+                    lines.append("```python")
+                    if method.annotations:
+                        lines.extend(method.annotations)
+                    lines.append(method.signature)
+                    lines.append("```")
+                    lines.append("")
+                    lines.append(method.description or f"TODO: Describe what `{method_title}` does.")
+                    lines.append("")
+
+    if module_info.functions:
+        lines.append("## Module Functions")
+        lines.append("")
+        for method in module_info.functions:
+            lines.append(f"### {method.name}")
+            lines.append("")
+            lines.append("```python")
+            if method.annotations:
+                lines.extend(method.annotations)
+            lines.append(method.signature)
+            lines.append("```")
+            lines.append("")
+            lines.append(method.description or f"TODO: Describe what `{method.name}` does.")
+            lines.append("")
+
+    lines.append("## See Also")
+    lines.append("")
+    lines.append(f"- **Software Detailed Design:** [{module_info.module_name}_SDD.md](./{module_info.module_name}_SDD.md)")
+    lines.append("")
+
+    content = "\n".join(lines)
+    return linkify_content(content, type_doc_map, doc_dir, module_info.module_name)
+
+
+def generate_python_module_sdd_doc(
+    module_info: PythonModuleDoc,
+    relative_source_path: str,
+    type_doc_map: dict = None,
+    doc_dir: str = "",
+) -> str:
+    """Generate a module-level SDD file for a Python source file."""
+    if type_doc_map is None:
+        type_doc_map = {}
+
+    lines: List[str] = [
+        f"# {module_info.module_name} — Software Detailed Design",
+        "",
+        f"> **API Documentation:** [{module_info.module_name}.md](./{module_info.module_name}.md)  ",
+        f"> **Source File:** [{module_info.file_name}]({relative_source_path})",
+        "",
+        "## Table of Contents",
+        "",
+        "- [Usage](#usage)",
+        "- [1. Overview](#1-overview)",
+        "- [2. Imports](#2-imports)",
+    ]
+
+    section_num = 3
+    if module_info.classes:
+        lines.append(f"- [{section_num}. Classes](#{section_num}-classes)")
+        section_num += 1
+    if module_info.functions:
+        lines.append(f"- [{section_num}. Module-Level Functions](#{section_num}-module-level-functions)")
+    lines.append("")
+
+    lines.append("## Usage")
+    lines.append("")
+    lines.append(f"TODO: Describe how `{module_info.module_name}` is used.")
+    lines.append("")
+
+    lines.append("---")
+    lines.append("")
+
+    lines.append("## 1. Overview")
+    lines.append("")
+    lines.append(module_info.module_docstring or f"TODO: Provide an overview of `{module_info.module_name}`.")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    lines.append("## 2. Imports")
+    lines.append("")
+    if module_info.imports:
+        lines.append("```python")
+        for imp in module_info.imports:
+            if "." in imp:
+                parts = imp.rsplit(".", 1)
+                lines.append(f"from {parts[0]} import {parts[1]}")
+            else:
+                lines.append(f"import {imp}")
+        lines.append("```")
+    else:
+        lines.append("No imports.")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    next_section = 3
+    if module_info.classes:
+        lines.append(f"## {next_section}. Classes")
+        lines.append("")
+        for cls in module_info.classes:
+            lines.append(f"### `{cls.name}`")
+            lines.append("")
+            lines.append("```python")
+            lines.append(cls.class_declaration)
+            lines.append("```")
+            lines.append("")
+            lines.append(cls.docstring or f"TODO: Explain class `{cls.name}`.")
+            lines.append("")
+
+            if cls.fields:
+                lines.append("#### Fields")
+                lines.append("")
+                for fld in cls.fields:
+                    lines.append(f"- `{fld.name}` (`{fld.type or 'Any'}`) — TODO: describe")
+                lines.append("")
+
+            if cls.methods:
+                lines.append("#### Methods")
+                lines.append("")
+                for method in cls.methods:
+                    lines.append("```python")
+                    if method.annotations:
+                        lines.extend(method.annotations)
+                    lines.append(method.signature)
+                    lines.append("```")
+                    lines.append(method.description or f"TODO: Provide detailed design for `{cls.name}.{method.name}`.")
+                    lines.append("")
+        lines.append("---")
+        lines.append("")
+        next_section += 1
+
+    if module_info.functions:
+        lines.append(f"## {next_section}. Module-Level Functions")
+        lines.append("")
+        for method in module_info.functions:
+            lines.append(f"### `{method.name}()`")
+            lines.append("")
+            lines.append("```python")
+            if method.annotations:
+                lines.extend(method.annotations)
+            lines.append(method.signature)
+            lines.append("```")
+            lines.append(method.description or f"TODO: Provide detailed design for `{method.name}`.")
+            lines.append("")
+
+    content = "\n".join(lines)
+    return linkify_content(content, type_doc_map, doc_dir, module_info.module_name)
+
+
+def _process_python_module(
+    module_info: PythonModuleDoc,
+    source_file: str,
+    source_dir: str,
+    doc_dir: str,
+    docs_output_dir: str,
+    type_doc_map: dict,
+    overwrite: bool,
+) -> tuple:
+    """Generate or refresh module-level docs for a Python source file."""
+    base_name = module_info.module_name
+    api_doc_path = os.path.join(doc_dir, f"{base_name}.md")
+    sdd_doc_path = os.path.join(doc_dir, f"{base_name}_SDD.md")
+    relative_source = compute_relative_source_path(source_file, source_dir, doc_dir)
+
+    api_exists = os.path.exists(api_doc_path)
+    sdd_exists = os.path.exists(sdd_doc_path)
+
+    if overwrite or not api_exists:
+        api_content = generate_python_module_api_doc(module_info, relative_source, type_doc_map, doc_dir)
+        with open(api_doc_path, "w", encoding="utf-8") as f:
+            f.write(api_content)
+        print(f"  CREATED: {os.path.relpath(api_doc_path, docs_output_dir)}")
+
+    if overwrite or not sdd_exists:
+        sdd_content = generate_python_module_sdd_doc(module_info, relative_source, type_doc_map, doc_dir)
+        with open(sdd_doc_path, "w", encoding="utf-8") as f:
+            f.write(sdd_content)
+        print(f"  CREATED: {os.path.relpath(sdd_doc_path, docs_output_dir)}")
+
+    if overwrite or (not api_exists or not sdd_exists):
+        return 1, 0
+
+    # Existing module docs: normalize section placement (e.g., TOC before Usage)
+    # and refresh TOC links even when no new source symbols were added.
+    updated_any = False
+
+    with open(api_doc_path, "r", encoding="utf-8") as f:
+        api_lines = f.read().split("\n")
+    normalized_api_lines = _enforce_usage_and_toc_layout(
+        api_lines,
+        [
+            "## Usage",
+            "",
+            f"TODO: Add usage examples for `{module_info.module_name}`.",
+            "",
+        ],
+    )
+    normalized_api = "\n".join(normalized_api_lines)
+    with open(api_doc_path, "r", encoding="utf-8") as f:
+        existing_api = f.read()
+    if normalized_api != existing_api:
+        normalized_api = linkify_content(
+            normalized_api,
+            type_doc_map,
+            doc_dir,
+            module_info.module_name,
+        )
+        with open(api_doc_path, "w", encoding="utf-8") as f:
+            f.write(normalized_api)
+        print(f"  MERGED:  {os.path.relpath(api_doc_path, docs_output_dir)}")
+        updated_any = True
+
+    with open(sdd_doc_path, "r", encoding="utf-8") as f:
+        sdd_lines = f.read().split("\n")
+    normalized_sdd_lines = _enforce_usage_and_toc_layout(
+        sdd_lines,
+        [
+            "## Usage",
+            "",
+            f"TODO: Describe how `{module_info.module_name}` is used.",
+            "",
+        ],
+    )
+    normalized_sdd = "\n".join(normalized_sdd_lines)
+    with open(sdd_doc_path, "r", encoding="utf-8") as f:
+        existing_sdd = f.read()
+    if normalized_sdd != existing_sdd:
+        normalized_sdd = linkify_content(
+            normalized_sdd,
+            type_doc_map,
+            doc_dir,
+            module_info.module_name,
+        )
+        with open(sdd_doc_path, "w", encoding="utf-8") as f:
+            f.write(normalized_sdd)
+        print(f"  MERGED:  {os.path.relpath(sdd_doc_path, docs_output_dir)}")
+        updated_any = True
+
+    if updated_any:
+        return 1, 0
+
+    print(f"  UP-TO-DATE: {base_name}.md & {base_name}_SDD.md")
+    return 0, 1
+
+
 def process_source_directory(
     source_dir: str, docs_output_dir: str, overwrite: bool = False
 ):
@@ -1579,10 +2403,22 @@ def process_source_directory(
                     continue
                 infos = [class_info]
             else:  # .py
-                infos = parse_python_file(source_file)
-                if not infos:
+                module_info = parse_python_file(source_file)
+                if not module_info:
                     print(f"  WARN: Could not parse {fname}")
                     continue
+                gen, skip = _process_python_module(
+                    module_info,
+                    source_file,
+                    source_dir,
+                    doc_dir,
+                    docs_output_dir,
+                    type_doc_map,
+                    overwrite,
+                )
+                generated_count += gen
+                skipped_count += skip
+                continue
 
             for class_info in infos:
                 gen, skip = _process_class_info(

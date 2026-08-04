@@ -1,0 +1,154 @@
+@startuml
+
+'
+' Light theme
+'
+
+'
+' Colors
+'
+!$color_bg = "#FFFFFF"
+!$color_fg = "#000000"
+!$color_arrow = "#6b7280"
+
+!$color_primary = "#333333"
+!$color_sydd_bg = "#f0f7ff"
+!$color_sydd_border = "#a9baccff"
+!$color_sydd_main_border = "#2b6cb0"
+
+!$color_srs_bg = "#fffbea"
+!$color_srs_border = "#b7791f"
+
+!$color_component_bg = "#e2e8f0"
+!$color_component_border = "#4a5568"
+!$color_external_component_bg = "#8eb2c0"
+!$color_external_component_border = "#355360"
+
+skinparam {
+  BackgroundColor $color_bg
+
+  DefaultFontName "Segoe UI"
+  DefaultFontColor $color_fg
+
+  ArrowColor $color_arrow
+  ArrowFontSize 10
+  ArrowFontStyle bold
+
+  RectangleBackgroundColor $color_bg
+  RectangleBorderColor $color_primary
+  RectangleBorderThickness 2
+
+  ComponentBackgroundColor $color_sydd_bg
+  ComponentBorderColor $color_sydd_main_border
+  ComponentBorderThickness 2
+
+  ComponentStereotypeFontColor $color_fg
+  Shadowing false
+}
+
+skinparam rectangle<<ZC>> {
+  BackgroundColor $color_bg
+  BorderColor $color_primary
+  BorderThickness 2
+}
+
+skinparam rectangle<<SyDD>> {
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+skinparam rectangle<<SyDDMain>> {
+  FontStyle plain
+  BackgroundColor $color_sydd_bg
+  BorderColor $color_sydd_main_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRS>> {
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam rectangle<<SRSMain>> {
+  FontStyle plain
+  BackgroundColor $color_srs_bg
+  BorderColor $color_srs_border
+  BorderThickness 2
+  BorderStyle solid
+}
+
+skinparam component<<External>> {
+  BackgroundColor $color_external_component_bg
+  BorderColor $color_external_component_border
+  BorderThickness 2
+  BorderStyle dashed
+}
+
+
+hide stereotype
+left to right direction
+title Function Call Decomposition: decomposition-generator/generate_decomp.py
+skinparam packageStyle rectangle
+
+rectangle "generate_decomp.py" <<SRS>> as file_generate_decomp {
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.__init__()</b>" as m_1
+  component "generate_decomp.py::<b>PythonMethodCallVisitor._visit_function()</b>" as m_2
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.current_function()</b>" as m_3
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_AsyncFunctionDef()</b>" as m_4
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_Call()</b>" as m_5
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_ClassDef()</b>" as m_6
+  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_FunctionDef()</b>" as m_7
+  component "generate_decomp.py::<b>analyze_file()</b>" as m_8
+  component "generate_decomp.py::<b>analyze_java_source()</b>" as m_9
+  component "generate_decomp.py::<b>analyze_python_source()</b>" as m_10
+  component "generate_decomp.py::<b>attribute_chain_name()</b>" as m_11
+  component "generate_decomp.py::<b>build_puml()</b>" as m_12
+  component "generate_decomp.py::<b>class_names()</b>" as m_13
+  component "generate_decomp.py::<b>collect_source_files()</b>" as m_14
+  component "generate_decomp.py::<b>extract_calls()</b>" as m_15
+  component "generate_decomp.py::<b>extract_methods()</b>" as m_16
+  component "generate_decomp.py::<b>filter_method_calls()</b>" as m_17
+  component "generate_decomp.py::<b>find_matching_brace()</b>" as m_18
+  component "generate_decomp.py::<b>is_probable_method_declaration()</b>" as m_19
+  component "generate_decomp.py::<b>load_theme_lines()</b>" as m_20
+  component "generate_decomp.py::<b>main()</b>" as m_21
+  component "generate_decomp.py::<b>sanitize_identifier()</b>" as m_22
+  component "generate_decomp.py::<b>simple_callable_name()</b>" as m_23
+  component "generate_decomp.py::<b>simple_name()</b>" as m_24
+  component "generate_decomp.py::<b>strip_comments_and_strings()</b>" as m_25
+  component "generate_decomp.py::<b>usage()</b>" as m_26
+  component "generate_decomp.py::<b>write_output()</b>" as m_27
+}
+
+m_4 --> m_2
+m_5 --> m_3
+m_5 --> m_23
+m_7 --> m_2
+m_8 --> m_9
+m_8 --> m_10
+m_9 --> m_25
+m_9 --> m_16
+m_9 --> m_15
+m_11 --> m_11
+m_12 --> m_22
+m_12 --> m_24
+m_16 --> m_13
+m_16 --> m_19
+m_16 --> m_18
+m_17 --> m_24
+m_21 --> m_26
+m_21 --> m_26
+m_21 --> m_26
+m_21 --> m_14
+m_21 --> m_8
+m_21 --> m_24
+m_21 --> m_20
+m_21 --> m_17
+m_21 --> m_12
+m_21 --> m_27
+@enduml

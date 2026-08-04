@@ -3,23 +3,11 @@
 > **Software Detailed Documentation:** [generate_docs_SDD.md](./generate_docs_SDD.md)  
 > **Source File:** [generate_docs.py](./generate_docs.py)
 
-A Python script that automatically generates template documentation files from Java source code. It parses `.java` files and produces both API reference (`.md`) and Software Detailed Design (`_SDD.md`) templates mirroring the source folder structure.
-
----
-
-## Table of Contents
-
-- [Usage](#usage)
-- [Output](#output)
-- [Behavior](#behavior)
-- [Console Output](#console-output)
-- [Dependencies](#dependencies)
-
----
+Generates and updates API and SDD markdown templates from Java and Python source trees. The script mirrors source folders in the docs output folder, links related types, and merges changes into existing documentation without removing manual content.
 
 ## Usage
 
-```
+```bash
 python generate_docs.py <source_dir> <docs_output_dir> [--overwrite]
 ```
 
@@ -27,155 +15,135 @@ python generate_docs.py <source_dir> <docs_output_dir> [--overwrite]
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `source_dir` | Yes | Path to the Java source code root directory (e.g., `src/main/java/org/almond/buildinglore`) |
-| `docs_output_dir` | Yes | Path to the documentation output directory (e.g., `Documentation`) |
-| `--overwrite` | No | If set, regenerates all documentation files from scratch. Default behavior merges new content into existing files. |
+| `source_dir` | Yes | Root source directory containing `.java` and/or `.py` files. |
+| `docs_output_dir` | Yes | Root documentation output directory. |
+| `--overwrite` | No | Regenerates both docs for every parsed type/module pair. Without this flag, existing docs are merged and preserved. |
 
 ### Examples
 
-Generate/merge docs (default):
-```
+Generate/merge Java docs:
+```bash
 python Utils/documentation-generator/generate_docs.py src/main/java/org/almond/buildinglore Documentation
 ```
 
-Regenerate all docs (overwrite):
+Generate/merge Python docs:
+```bash
+python Utils/documentation-generator/generate_docs.py src/main/python/org/almond/buildinglore Documentation
 ```
+
+Regenerate everything:
+```bash
 python Utils/documentation-generator/generate_docs.py src/main/java/org/almond/buildinglore Documentation --overwrite
 ```
 
----
+## Table of Contents
+
+- [Usage](#usage)
+- [Output](#output)
+- [Core Behavior](#core-behavior)
+- [Merge Behavior](#merge-behavior)
+- [Cross-Reference Linking](#cross-reference-linking)
+- [Console Output](#console-output)
+- [Dependencies](#dependencies)
 
 ## Output
 
-The script produces two files per Java source file:
+For each discovered type, the script writes two files in the mirrored docs folder:
 
-### `[ClassName].md` — API Documentation
+- `[TypeName].md` (API doc)
+- `[TypeName]_SDD.md` (SDD doc)
 
-Contains:
-- **Title** — Plain class name heading (for example, `# WandUtil`)
-- **Header** — Top links to the corresponding SDD doc and source file
-- **Description** — Extracted from class-level Javadoc, or a `TODO` placeholder
-- **Table of Contents** — Dedicated section containing fields and function links
-- **Fields** — List of class fields with type links to corresponding API docs
-- **Functions** — In-page links to each method section
-- **Method Sections** — For each method:
-  - Signature (with annotations)
-  - Description placeholder
-  - Parameter table (type linked, name, description)
-  - Return type (linked to API doc if applicable)
-- **See Also** — Link to the corresponding SDD document
+### Java Input
 
-### `[ClassName]_SDD.md` — Software Detailed Design
+- One top-level `.java` class/interface/enum file yields one API/SDD pair.
 
-Contains:
-- **Header** — Links to the API doc and source file
-- **Section 1: Overview** — High-level description from Javadoc or placeholder
-- **Section 2: Package Declaration & Imports** — Full import list with purpose table
-- **Section 3: Class Declaration** — Class signature with inheritance/interface notes
-- **Section 4: Instance Fields** — Code block and description table
-- **Sections 5+: Methods** — One section per method with signature and design placeholder
+### Python Input
 
-### Folder Structure
+- A `.py` file with top-level classes yields one API/SDD pair per class.
+- A `.py` file with no top-level classes but with top-level functions yields one API/SDD pair for the module name.
 
-The output mirrors the source directory hierarchy:
+## Core Behavior
 
-```
-source_dir/                    docs_output_dir/
-├── BuildingLorePlugin.java    ├── BuildingLorePlugin.md
-│                              ├── BuildingLorePlugin_SDD.md
-├── command/                   ├── command/
-│   └── MyCommand.java         │   ├── MyCommand.md
-│                              │   └── MyCommand_SDD.md
-├── model/                     ├── model/
-│   └── MyModel.java           │   ├── MyModel.md
-│                              │   └── MyModel_SDD.md
-```
+- Supports both `.java` and `.py` discovery in one run.
+- Mirrors source directory structure under the docs output root.
+- Computes source file links relative to each generated doc file.
+- Parses Java signatures with regex and Python signatures with `ast`.
+- Extracts method/function descriptions from:
+  - JavaDoc (`@param`, `@return`, multiline support)
+  - Python docstrings (`Args/Arguments/Parameters`, `Returns` sections)
+- Populates API parameter and return descriptions when parsed metadata exists.
+- Populates SDD method description placeholders when parsed metadata exists.
+- Enforces generated/merged doc layout as:
+  - Header block
+  - `## Usage`
+  - `## Table of Contents`
+  - Remaining sections
 
----
+## Merge Behavior
 
-## Behavior
+Default mode merges into existing docs when both API and SDD files exist for a type.
 
-### Merge Mode (Default)
+- Adds newly discovered fields to API `## Fields`.
+- Adds newly discovered methods/constructors as new sections.
+- Preserves existing authored text.
+- Normalizes API header to current format.
+- Repositions `## See Also` to the end of API docs.
+- Rebuilds table of contents from current `##` headings.
+- Ensures `## Usage` and `## Table of Contents` are present and ordered.
+- Runs a linkification pass even when no structural merge was needed.
 
-When both `.md` and `_SDD.md` already exist for a source file, the script operates in **merge mode**:
+If only one of the two files exists, the missing file is created.
 
-- **New methods** — Methods found in source but not in the doc are appended as new sections (both API and SDD).
-- **New fields** — Fields found in source but not in the doc are added to the Fields list.
-- **TOC updated** — New method entries are added to the Functions table of contents.
-- **API header normalized** — Existing API docs have their top title/header block rewritten to the current format (`# ClassName`, `Software Detailed Documentation`, `Source File`).
-- **Existing content preserved** — Manually-written descriptions, design notes, and other content are never overwritten or removed.
-- **See Also enforcement** — The See Also section is always repositioned to the end of the API doc.
-- **Deduplication** — Methods already documented (by heading name or code block signature) are not re-added.
+With `--overwrite`, both files are rewritten for each parsed type.
 
-### Inline Type Linking
+## Cross-Reference Linking
 
-All output (generated, merged, or re-linkified) passes through the **inline type linking** system:
+The script builds a type-to-doc map from source discovery and applies linking in two ways:
 
-- Scans all non-code-block lines for backtick-wrapped type names (e.g., `` `SelectionManager` ``)
-- If a matching API documentation file exists, wraps the reference as a markdown link: `` [`SelectionManager`](manager/SelectionManager.md) ``
-- Skips types that are already linked (`` [`Type`](...) ``)
-- Skips references to the current class (no self-links)
-- Handles generics and array brackets (e.g., `` `List<Selection>` `` links via the base type)
+- Structured type links:
+  - Field types
+  - Parameter types
+  - Return types
+- Inline backtick linkification in non-code blocks:
+  - Converts `` `TypeName` `` to `` [`TypeName`](relative/path.md) `` when a doc target exists.
 
-### Overwrite Mode (`--overwrite`)
+Linking behavior details:
 
-Regenerates all documentation files from scratch. **All existing content is replaced** — use with caution.
-
-### Other Behavior
-
-- **Relative links** — Source file links and type cross-references use relative paths computed from the doc file location.
-- **TODO placeholders** — All descriptions are filled with `TODO:` markers for manual completion.
-- **Javadoc extraction** — If a class has a Javadoc comment immediately above the class declaration, it is used as the description instead of a TODO placeholder.
-- **Constructor detection** — Constructors are identified and labeled separately from regular methods.
-- **Annotation preservation** — Method annotations (e.g., `@Override`) are included in the signature block.
-- **Type cross-referencing** — Parameter types and return types in structured positions are linked to their API docs when available.
-
----
+- Skips self-links (type is the current class/module).
+- Preserves code blocks (no inline link replacement inside fenced blocks).
+- Resolves relative links from each current doc directory.
+- Handles generic/array stripping to resolve base type names.
 
 ## Console Output
 
-```
-Source directory: C:\...\src\main\java\org\almond\buildinglore
-Output directory: C:\...\Documentation
-Overwrite mode:  OFF
+Typical statuses:
 
-Generating documentation templates...
---------------------------------------------------
-  CREATED: BuildingLorePlugin.md
-  CREATED: BuildingLorePlugin_SDD.md
-  MERGED:  command\BuildingLoreCommand.md
-  MERGED:  command\BuildingLoreCommand_SDD.md
-  UP-TO-DATE: Selection.md & Selection_SDD.md
-  WARN: Could not parse InvalidFile.java
---------------------------------------------------
-Done. Generated: 2 file pairs, Skipped: 1 (already exist)
+- `CREATED`: new API or SDD file written.
+- `MERGED`: existing file changed through merge/normalization.
+- `UP-TO-DATE`: both files already in sync after merge checks.
+- `WARN`: parser could not produce metadata for a file.
+
+Summary line:
+
+```text
+Done. Generated: <N> file pairs, Skipped: <M> (already exist)
 ```
 
-| Status | Meaning |
-|--------|---------|
-| `CREATED` | New documentation file generated from scratch |
-| `MERGED` | Existing file updated with new methods/fields (existing content preserved) |
-| `UP-TO-DATE` | No changes needed — source and docs are in sync |
-| `WARN` | Java file could not be parsed (skipped) |
-
----
+Counts are tracked per processed type/module pair, not strictly per source file.
 
 ## Dependencies
 
-| Dependency | Version | Notes |
-|-----------|---------|-------|
-| Python | 3.7+ | Uses `dataclasses` (3.7+), `typing` (3.5+), `pathlib` (3.4+) |
-
-### Standard Library Modules Used
+Standard library only.
 
 | Module | Purpose |
 |--------|---------|
-| `os` | File system operations, path resolution, directory walking |
-| `re` | Regular expressions for Java source parsing and inline type detection |
-| `sys` | Process exit on validation errors |
-| `argparse` | CLI argument parsing and help generation |
-| `pathlib.Path` | Object-oriented path manipulation |
-| `dataclasses` | Declarative data classes (`@dataclass`, `field`) |
-| `typing` | Type annotations (`List`, `Optional`) |
+| `argparse` | CLI argument parsing |
+| `ast` | Python source parsing |
+| `dataclasses` | Structured parse models |
+| `os` | File walking, path handling, output writing |
+| `re` | Java parsing and markdown/link processing |
+| `sys` | Exit on invalid source directory |
+| `typing` | Type hints |
+| `pathlib.Path` | Path utilities (imported) |
 
-No external/third-party packages are required.
+No third-party dependencies are required.
