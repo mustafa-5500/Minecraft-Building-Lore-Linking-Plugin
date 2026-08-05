@@ -90,138 +90,134 @@ skinparam component<<External>> {
 }
 
 
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #dbeafe
+  BorderColor #2b6cb0
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #eff6ff
+  BorderColor #5b7fb6
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #f8fbff
+  BorderColor #6b8bbd
+  BorderThickness 1
+}
+
 hide stereotype
 left to right direction
 title Function Call Decomposition: documentation-generator/generate_docs.py
 skinparam packageStyle rectangle
 
-rectangle "generate_docs.py" <<SRS>> as file_generate_docs {
-  component "generate_docs.py::<b>_ast_annotation_to_str()</b>" as m_1
-  component "generate_docs.py::<b>_build_python_signature()</b>" as m_2
-  component "generate_docs.py::<b>_build_toc_section()</b>" as m_3
-  component "generate_docs.py::<b>_enforce_usage_and_toc_layout()</b>" as m_4
-  component "generate_docs.py::<b>_extract_header_block()</b>" as m_5
-  component "generate_docs.py::<b>_extract_level2_section()</b>" as m_6
-  component "generate_docs.py::<b>_extract_python_fields()</b>" as m_7
-  component "generate_docs.py::<b>_heading_to_anchor()</b>" as m_8
-  component "generate_docs.py::<b>_inject_api_method_descriptions()</b>" as m_9
-  component "generate_docs.py::<b>_inject_sdd_method_descriptions()</b>" as m_10
-  component "generate_docs.py::<b>_parse_java_method_doc()</b>" as m_11
-  component "generate_docs.py::<b>_parse_python_class_node()</b>" as m_12
-  component "generate_docs.py::<b>_parse_python_docstring()</b>" as m_13
-  component "generate_docs.py::<b>_parse_python_func_node()</b>" as m_14
-  component "generate_docs.py::<b>_process_class_info()</b>" as m_15
-  component "generate_docs.py::<b>_trim_outer_blank_lines()</b>" as m_16
-  component "generate_docs.py::<b>build_api_header()</b>" as m_17
-  component "generate_docs.py::<b>build_type_doc_map()</b>" as m_18
-  component "generate_docs.py::<b>clean_javadoc()</b>" as m_19
-  component "generate_docs.py::<b>compute_relative_source_path()</b>" as m_20
-  component "generate_docs.py::<b>extract_fields()</b>" as m_21
-  component "generate_docs.py::<b>extract_method_javadoc()</b>" as m_22
-  component "generate_docs.py::<b>extract_methods()</b>" as m_23
-  component "generate_docs.py::<b>generate_api_doc()</b>" as m_24
-  component "generate_docs.py::<b>generate_api_method_section()</b>" as m_25
-  component "generate_docs.py::<b>generate_sdd_doc()</b>" as m_26
-  component "generate_docs.py::<b>generate_sdd_method_section()</b>" as m_27
-  component "generate_docs.py::<b>linkify_content()</b>" as m_28
-  component "generate_docs.py::<b>linkify_inline_types()</b>" as m_29
-  component "generate_docs.py::<b>main()</b>" as m_30
-  component "generate_docs.py::<b>merge_api_doc()</b>" as m_31
-  component "generate_docs.py::<b>merge_sdd_doc()</b>" as m_32
-  component "generate_docs.py::<b>normalize_api_header()</b>" as m_33
-  component "generate_docs.py::<b>parse_existing_api_doc()</b>" as m_34
-  component "generate_docs.py::<b>parse_existing_sdd_doc()</b>" as m_35
-  component "generate_docs.py::<b>parse_java_file()</b>" as m_36
-  component "generate_docs.py::<b>parse_parameters()</b>" as m_37
-  component "generate_docs.py::<b>parse_python_file()</b>" as m_38
-  component "generate_docs.py::<b>process_source_directory()</b>" as m_39
-  component "generate_docs.py::<b>replace_backtick_ref()</b>" as m_40
-  component "generate_docs.py::<b>resolve_type_link()</b>" as m_41
+rectangle "generate_docs.py" <<FileLevel>> as file_generate_docs {
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_generate_docs {
+    component "generate_docs.py::<b>_ast_annotation_to_str()</b>" <<FunctionLevel>> as m_1
+    component "generate_docs.py::<b>_build_python_signature()</b>" <<FunctionLevel>> as m_2
+    component "generate_docs.py::<b>_build_toc_section()</b>" <<FunctionLevel>> as m_3
+    component "generate_docs.py::<b>_enforce_usage_and_toc_layout()</b>" <<FunctionLevel>> as m_4
+    component "generate_docs.py::<b>_extract_header_block()</b>" <<FunctionLevel>> as m_5
+    component "generate_docs.py::<b>_extract_level2_section()</b>" <<FunctionLevel>> as m_6
+    component "generate_docs.py::<b>_extract_python_fields()</b>" <<FunctionLevel>> as m_7
+    component "generate_docs.py::<b>_heading_to_anchor()</b>" <<FunctionLevel>> as m_8
+    component "generate_docs.py::<b>_inject_api_method_descriptions()</b>" <<FunctionLevel>> as m_9
+    component "generate_docs.py::<b>_inject_sdd_method_descriptions()</b>" <<FunctionLevel>> as m_10
+    component "generate_docs.py::<b>_parse_java_method_doc()</b>" <<FunctionLevel>> as m_11
+    component "generate_docs.py::<b>_parse_python_class_node()</b>" <<FunctionLevel>> as m_12
+    component "generate_docs.py::<b>_parse_python_docstring()</b>" <<FunctionLevel>> as m_13
+    component "generate_docs.py::<b>_parse_python_func_node()</b>" <<FunctionLevel>> as m_14
+    component "generate_docs.py::<b>_process_class_info()</b>" <<FunctionLevel>> as m_15
+    component "generate_docs.py::<b>_process_python_module()</b>" <<FunctionLevel>> as m_16
+    component "generate_docs.py::<b>_trim_outer_blank_lines()</b>" <<FunctionLevel>> as m_17
+    component "generate_docs.py::<b>build_api_header()</b>" <<FunctionLevel>> as m_18
+    component "generate_docs.py::<b>build_type_doc_map()</b>" <<FunctionLevel>> as m_19
+    component "generate_docs.py::<b>clean_javadoc()</b>" <<FunctionLevel>> as m_20
+    component "generate_docs.py::<b>compute_relative_source_path()</b>" <<FunctionLevel>> as m_21
+    component "generate_docs.py::<b>extract_fields()</b>" <<FunctionLevel>> as m_22
+    component "generate_docs.py::<b>extract_method_javadoc()</b>" <<FunctionLevel>> as m_23
+    component "generate_docs.py::<b>extract_methods()</b>" <<FunctionLevel>> as m_24
+    component "generate_docs.py::<b>generate_api_doc()</b>" <<FunctionLevel>> as m_25
+    component "generate_docs.py::<b>generate_api_method_section()</b>" <<FunctionLevel>> as m_26
+    component "generate_docs.py::<b>generate_python_module_api_doc()</b>" <<FunctionLevel>> as m_27
+    component "generate_docs.py::<b>generate_python_module_sdd_doc()</b>" <<FunctionLevel>> as m_28
+    component "generate_docs.py::<b>generate_sdd_doc()</b>" <<FunctionLevel>> as m_29
+    component "generate_docs.py::<b>generate_sdd_method_section()</b>" <<FunctionLevel>> as m_30
+    component "generate_docs.py::<b>linkify_content()</b>" <<FunctionLevel>> as m_31
+    component "generate_docs.py::<b>linkify_inline_types()</b>" <<FunctionLevel>> as m_32
+    component "generate_docs.py::<b>main()</b>" <<FunctionLevel>> as m_33
+    component "generate_docs.py::<b>merge_api_doc()</b>" <<FunctionLevel>> as m_34
+    component "generate_docs.py::<b>merge_sdd_doc()</b>" <<FunctionLevel>> as m_35
+    component "generate_docs.py::<b>normalize_api_header()</b>" <<FunctionLevel>> as m_36
+    component "generate_docs.py::<b>parse_existing_api_doc()</b>" <<FunctionLevel>> as m_37
+    component "generate_docs.py::<b>parse_existing_sdd_doc()</b>" <<FunctionLevel>> as m_38
+    component "generate_docs.py::<b>parse_java_file()</b>" <<FunctionLevel>> as m_39
+    component "generate_docs.py::<b>parse_parameters()</b>" <<FunctionLevel>> as m_40
+    component "generate_docs.py::<b>parse_python_file()</b>" <<FunctionLevel>> as m_41
+    component "generate_docs.py::<b>process_source_directory()</b>" <<FunctionLevel>> as m_42
+    component "generate_docs.py::<b>replace_backtick_ref()</b>" <<FunctionLevel>> as m_43
+    component "generate_docs.py::<b>resolve_type_link()</b>" <<FunctionLevel>> as m_44
+  }
 }
 
-m_1 --> m_1
-m_1 --> m_1
-m_1 --> m_1
-m_1 --> m_1
-m_1 --> m_1
-m_1 --> m_1
-m_1 --> m_1
-m_2 --> m_1
-m_2 --> m_1
-m_2 --> m_1
-m_2 --> m_1
-m_2 --> m_1
-m_3 --> m_8
-m_4 --> m_5
-m_4 --> m_6
-m_4 --> m_6
-m_4 --> m_16
-m_4 --> m_16
-m_4 --> m_3
-m_7 --> m_1
-m_7 --> m_1
-m_12 --> m_1
-m_12 --> m_7
-m_12 --> m_14
-m_14 --> m_2
-m_14 --> m_13
-m_15 --> m_20
-m_15 --> m_24
-m_15 --> m_26
-m_15 --> m_31
-m_15 --> m_32
-m_15 --> m_28
-m_15 --> m_28
-m_15 --> m_28
-m_15 --> m_28
-m_15 --> m_24
-m_15 --> m_26
-m_22 --> m_19
-m_23 --> m_37
-m_23 --> m_22
-m_23 --> m_11
-m_23 --> m_22
-m_23 --> m_11
-m_23 --> m_37
-m_24 --> m_17
-m_24 --> m_8
-m_24 --> m_41
-m_24 --> m_41
-m_24 --> m_41
-m_24 --> m_28
-m_25 --> m_41
-m_25 --> m_41
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_8
-m_26 --> m_28
-m_28 --> m_29
-m_30 --> m_39
-m_31 --> m_34
-m_31 --> m_33
-m_31 --> m_41
-m_31 --> m_9
-m_31 --> m_4
-m_31 --> m_25
-m_31 --> m_9
-m_31 --> m_4
-m_32 --> m_35
-m_32 --> m_10
-m_32 --> m_4
-m_32 --> m_27
-m_32 --> m_10
-m_32 --> m_4
-m_33 --> m_17
-m_36 --> m_21
-m_36 --> m_23
-m_38 --> m_12
-m_38 --> m_14
-m_39 --> m_18
-m_39 --> m_36
-m_39 --> m_38
-m_39 --> m_15
+m_1 <--> m_1
+m_2 <--> m_1
+m_3 <--> m_8
+m_4 <--> m_5
+m_4 <--> m_6
+m_4 <--> m_17
+m_4 <--> m_3
+m_7 <--> m_1
+m_12 <--> m_1
+m_12 <--> m_7
+m_12 <--> m_14
+m_14 <--> m_2
+m_14 <--> m_13
+m_15 <--> m_21
+m_15 <--> m_25
+m_15 <--> m_29
+m_15 <--> m_34
+m_15 <--> m_35
+m_15 <--> m_31
+m_16 <--> m_21
+m_16 <--> m_27
+m_16 <--> m_28
+m_16 <--> m_4
+m_16 <--> m_31
+m_23 <--> m_20
+m_24 <--> m_40
+m_24 <--> m_23
+m_24 <--> m_11
+m_25 <--> m_18
+m_25 <--> m_8
+m_25 <--> m_44
+m_25 <--> m_31
+m_26 <--> m_44
+m_27 <--> m_44
+m_27 <--> m_31
+m_28 <--> m_31
+m_29 <--> m_8
+m_29 <--> m_31
+m_31 <--> m_32
+m_33 <--> m_42
+m_34 <--> m_37
+m_34 <--> m_36
+m_34 <--> m_44
+m_34 <--> m_9
+m_34 <--> m_4
+m_34 <--> m_26
+m_35 <--> m_38
+m_35 <--> m_10
+m_35 <--> m_4
+m_35 <--> m_30
+m_36 <--> m_18
+m_39 <--> m_22
+m_39 <--> m_24
+m_41 <--> m_12
+m_41 <--> m_14
+m_42 <--> m_19
+m_42 <--> m_39
+m_42 <--> m_41
+m_42 <--> m_16
+m_42 <--> m_15
 @enduml

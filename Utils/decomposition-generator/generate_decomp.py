@@ -244,6 +244,24 @@ def extract_calls(method_body: str) -> list[str]:
     return calls
 
 
+def has_java_value_return(method_body: str) -> bool:
+    """Check whether a Java method body contains a return statement with a value.
+
+    Arguments:
+        method_body: The method body text (comments/strings already stripped).
+
+    Returns:
+        True when at least one `return <expr>;` is found, False otherwise.
+    """
+    for match in re.finditer(r"\breturn\b", method_body):
+        idx = match.end()
+        while idx < len(method_body) and method_body[idx].isspace():
+            idx += 1
+        if idx < len(method_body) and method_body[idx] != ";":
+            return True
+    return False
+
+
 def attribute_chain_name(node: ast.AST) -> str | None:
     """Extract the full attribute chain name from an AST node.
     
@@ -285,6 +303,7 @@ class PythonMethodCallVisitor(ast.NodeVisitor):
         """Initialize the visitor with empty structures for method calls and local methods."""
         self.method_calls: dict[str, list[str]] = {}
         self.local_methods: set[str] = set()
+        self.returning_methods: set[str] = set()
         self._function_stack: list[str] = []
         self._class_stack: list[str] = []
 
@@ -351,10 +370,46 @@ class PythonMethodCallVisitor(ast.NodeVisitor):
             qualified_name = node.name
 
         self.local_methods.add(qualified_name)
+        if self._function_has_value_return(node):
+            self.returning_methods.add(qualified_name)
         self.method_calls.setdefault(qualified_name, [])
         self._function_stack.append(qualified_name)
         self.generic_visit(node)
         self._function_stack.pop()
+
+    def _function_has_value_return(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        """Determine whether a function has at least one `return` with a value.
+
+        This only inspects the current function body and intentionally skips nested
+        function/class/lambda scopes.
+        """
+
+        class _ReturnValueVisitor(ast.NodeVisitor):
+            def __init__(self) -> None:
+                self.has_value = False
+
+            def visit_Return(self, return_node: ast.Return) -> None:
+                if return_node.value is not None:
+                    self.has_value = True
+
+            def visit_FunctionDef(self, _: ast.FunctionDef) -> None:
+                return
+
+            def visit_AsyncFunctionDef(self, _: ast.AsyncFunctionDef) -> None:
+                return
+
+            def visit_ClassDef(self, _: ast.ClassDef) -> None:
+                return
+
+            def visit_Lambda(self, _: ast.Lambda) -> None:
+                return
+
+        visitor = _ReturnValueVisitor()
+        for statement in node.body:
+            if visitor.has_value:
+                break
+            visitor.visit(statement)
+        return visitor.has_value
 
     def visit_Call(self, node: ast.Call) -> None:
         """Visit a function call node and record the call if inside a function.
@@ -373,7 +428,7 @@ class PythonMethodCallVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def analyze_python_source(code: str) -> tuple[dict[str, list[str]], set[str]]:
+def analyze_python_source(code: str) -> tuple[dict[str, list[str]], set[str], set[str]]:
     """Analyze Python source code to extract method calls and local method definitions.
     
     Arguments:
@@ -385,14 +440,14 @@ def analyze_python_source(code: str) -> tuple[dict[str, list[str]], set[str]]:
     try:
         tree = ast.parse(code)
     except SyntaxError:
-        return {}, set()
+        return {}, set(), set()
 
     visitor = PythonMethodCallVisitor()
     visitor.visit(tree)
-    return visitor.method_calls, visitor.local_methods
+    return visitor.method_calls, visitor.local_methods, visitor.returning_methods
 
 
-def analyze_java_source(code: str) -> tuple[dict[str, list[str]], set[str]]:
+def analyze_java_source(code: str) -> tuple[dict[str, list[str]], set[str], set[str]]:
     """Analyze Java source code to extract method calls and local method definitions.
 
     Arguments:
@@ -406,13 +461,16 @@ def analyze_java_source(code: str) -> tuple[dict[str, list[str]], set[str]]:
 
     method_calls: dict[str, list[str]] = {}
     local_methods: set[str] = {method_name for method_name, _, _ in methods}
+    returning_methods: set[str] = set()
 
     for method_name, body_start, body_end in methods:
         body = cleaned[body_start:body_end]
         calls = extract_calls(body)
         method_calls[method_name] = calls
+        if has_java_value_return(body):
+            returning_methods.add(method_name)
 
-    return method_calls, local_methods
+    return method_calls, local_methods, returning_methods
 
 
 def sanitize_identifier(value: str) -> str:
@@ -437,6 +495,22 @@ def simple_name(symbol: str) -> str:
         The simple name (e.g., 'method').
     """
     return symbol.rsplit(".", 1)[-1]
+
+
+def split_owner_and_method(symbol: str) -> tuple[str | None, str]:
+    """Split a symbol into owner (e.g., class) and method name.
+
+    Arguments:
+        symbol: The symbol name, potentially qualified (e.g., 'Class.method').
+
+    Returns:
+        A tuple of (owner, method_name) where owner is None for unqualified symbols.
+    """
+    if "." not in symbol:
+        return None, symbol
+
+    owner, method = symbol.rsplit(".", 1)
+    return owner, method
 
 
 def filter_method_calls(
@@ -510,7 +584,9 @@ def build_puml(
     relative_path: Path,
     method_calls: dict[str, list[str]],
     local_methods: set[str],
+    returning_methods: set[str],
     theme_lines: list[str],
+    theme_name: str,
 ) -> str:
     """Build the PlantUML diagram text for the given method calls and local methods.
     
@@ -528,6 +604,35 @@ def build_puml(
     if theme_lines:
         lines.extend(theme_lines)
         lines.append("")
+    if theme_name == "dark":
+        file_bg, file_border = "#353b47", "#61afef"
+        class_bg, class_border = "#424856", "#7db7ec"
+        function_bg, function_border = "#4b5363", "#abb2bf"
+    elif theme_name == "light":
+        file_bg, file_border = "#dbeafe", "#2b6cb0"
+        class_bg, class_border = "#eff6ff", "#5b7fb6"
+        function_bg, function_border = "#f8fbff", "#6b8bbd"
+    else:
+        file_bg, file_border = "#e2e8f0", "#4a5568"
+        class_bg, class_border = "#edf2f7", "#718096"
+        function_bg, function_border = "#f7fafc", "#718096"
+
+    lines.append("skinparam rectangle<<FileLevel>> {")
+    lines.append(f"  BackgroundColor {file_bg}")
+    lines.append(f"  BorderColor {file_border}")
+    lines.append("  BorderThickness 2")
+    lines.append("}")
+    lines.append("skinparam rectangle<<ClassLevel>> {")
+    lines.append(f"  BackgroundColor {class_bg}")
+    lines.append(f"  BorderColor {class_border}")
+    lines.append("  BorderThickness 1")
+    lines.append("}")
+    lines.append("skinparam component<<FunctionLevel>> {")
+    lines.append(f"  BackgroundColor {function_bg}")
+    lines.append(f"  BorderColor {function_border}")
+    lines.append("  BorderThickness 1")
+    lines.append("}")
+    lines.append("")
     lines.append("hide stereotype")
     lines.append("left to right direction")
     lines.append(f"title Function Call Decomposition: {relative_path.as_posix()}")
@@ -536,19 +641,65 @@ def build_puml(
 
     file_label = relative_path.name
     file_alias = f"file_{sanitize_identifier(relative_path.stem)}"
-    lines.append(f'rectangle "{file_label}" <<SRS>> as {file_alias} {{')
+    lines.append(f'rectangle "{file_label}" <<FileLevel>> as {file_alias} {{')
 
     method_alias: dict[str, str] = {}
     method_simple_alias: dict[str, str | None] = {}
-    for idx, method_name in enumerate(sorted(local_methods), start=1):
-        alias = f"m_{idx}"
+    methods_by_owner: dict[str | None, list[str]] = {}
+    for method_name in sorted(local_methods):
+        owner, _ = split_owner_and_method(method_name)
+        methods_by_owner.setdefault(owner, []).append(method_name)
+
+    alias_counter = 1
+    for owner in sorted(name for name in methods_by_owner if name is not None):
+        class_alias = f"cls_{sanitize_identifier(owner)}"
+        lines.append(f'  rectangle "{owner}" <<ClassLevel>> as {class_alias} {{')
+        for method_name in methods_by_owner[owner]:
+            _, method_base_name = split_owner_and_method(method_name)
+            alias = f"m_{alias_counter}"
+            alias_counter += 1
+            method_alias[method_name] = alias
+            if method_base_name in method_simple_alias:
+                method_simple_alias[method_base_name] = None
+            else:
+                method_simple_alias[method_base_name] = alias
+            lines.append(
+                f'    component "{file_label}::<b>{method_name}()</b>" <<FunctionLevel>> as {alias}'
+            )
+        lines.append("  }")
+
+    if None in methods_by_owner:
+        global_alias = f"globals_{sanitize_identifier(relative_path.stem)}"
+        lines.append(f'  rectangle "Top-Level Functions" <<ClassLevel>> as {global_alias} {{')
+        for method_name in methods_by_owner[None]:
+            _, method_base_name = split_owner_and_method(method_name)
+            alias = f"m_{alias_counter}"
+            alias_counter += 1
+            method_alias[method_name] = alias
+            if method_base_name in method_simple_alias:
+                method_simple_alias[method_base_name] = None
+            else:
+                method_simple_alias[method_base_name] = alias
+            lines.append(
+                f'    component "{file_label}::<b>{method_name}()</b>" <<FunctionLevel>> as {alias}'
+            )
+
+        lines.append("  }")
+
+    for method_name in sorted(local_methods):
+        if method_name in method_alias:
+            continue
+        _, method_base_name = split_owner_and_method(method_name)
+        alias = f"m_{alias_counter}"
+        alias_counter += 1
         method_alias[method_name] = alias
-        base_name = simple_name(method_name)
-        if base_name in method_simple_alias:
-            method_simple_alias[base_name] = None
+        if method_base_name in method_simple_alias:
+            method_simple_alias[method_base_name] = None
         else:
-            method_simple_alias[base_name] = alias
-        lines.append(f'  component "{file_label}::<b>{method_name}()</b>" as {alias}')
+            method_simple_alias[method_base_name] = alias
+        lines.append(
+            f'  component "{file_label}::<b>{method_name}()</b>" <<FunctionLevel>> as {alias}'
+        )
 
     lines.append("}")
     lines.append("")
@@ -574,16 +725,37 @@ def build_puml(
         if caller not in method_alias:
             continue
         caller_alias = method_alias[caller]
+        emitted_targets: set[str] = set()
         for callee in callees:
             if callee in method_alias:
-                lines.append(f"{caller_alias} --> {method_alias[callee]}")
+                callee_alias = method_alias[callee]
+                if callee_alias in emitted_targets:
+                    continue
+                emitted_targets.add(callee_alias)
+                arrow = "<-->" if callee in returning_methods else "-->"
+                lines.append(f"{caller_alias} {arrow} {callee_alias}")
                 continue
 
             local_alias = method_simple_alias.get(callee)
             if local_alias is not None:
-                lines.append(f"{caller_alias} --> {local_alias}")
+                if local_alias in emitted_targets:
+                    continue
+                emitted_targets.add(local_alias)
+
+                local_method_name: str | None = None
+                for candidate_name, candidate_alias in method_alias.items():
+                    if candidate_alias == local_alias:
+                        local_method_name = candidate_name
+                        break
+
+                arrow = "<-->" if local_method_name in returning_methods else "-->"
+                lines.append(f"{caller_alias} {arrow} {local_alias}")
             else:
-                lines.append(f"{caller_alias} --> {external_alias[callee]}")
+                external_target = external_alias[callee]
+                if external_target in emitted_targets:
+                    continue
+                emitted_targets.add(external_target)
+                lines.append(f"{caller_alias} --> {external_target}")
 
     lines.append("@enduml")
     lines.append("")
@@ -593,7 +765,7 @@ def build_puml(
 def analyze_file(
     source_file: Path,
     source_root: Path,
-) -> tuple[Path, dict[str, list[str]], set[str]]:
+) -> tuple[Path, dict[str, list[str]], set[str], set[str]]:
     """Analyze a source file to extract method calls and local method definitions.
     
     Arguments:
@@ -606,14 +778,14 @@ def analyze_file(
     suffix = source_file.suffix.lower()
 
     if suffix == ".java":
-        method_calls, local_methods = analyze_java_source(code)
+        method_calls, local_methods, returning_methods = analyze_java_source(code)
     elif suffix == ".py":
-        method_calls, local_methods = analyze_python_source(code)
+        method_calls, local_methods, returning_methods = analyze_python_source(code)
     else:
-        method_calls, local_methods = {}, set()
+        method_calls, local_methods, returning_methods = {}, set(), set()
 
     relative_path = source_file.relative_to(source_root)
-    return relative_path, method_calls, local_methods
+    return relative_path, method_calls, local_methods, returning_methods
 
 
 def write_output(output_root: Path, relative_source: Path, diagram: str, suffix: str = "") -> Path:
@@ -677,12 +849,12 @@ def main() -> int:
         print(f"No supported source files found in: {source_root}")
         return 0
 
-    file_analyses: list[tuple[Path, dict[str, list[str]], set[str]]] = []
+    file_analyses: list[tuple[Path, dict[str, list[str]], set[str], set[str]]] = []
     for source_file in source_files:
         file_analyses.append(analyze_file(source_file, source_root))
 
     global_project_callables: set[str] = set()
-    for _, _, local_methods in file_analyses:
+    for _, _, local_methods, _ in file_analyses:
         for local_method in local_methods:
             global_project_callables.add(simple_name(local_method))
 
@@ -698,14 +870,21 @@ def main() -> int:
     generated = 0
     for theme_name, file_suffix in theme_targets:
         theme_lines = load_theme_lines(script_root, theme_name)
-        for relative_source, method_calls, local_methods in file_analyses:
+        for relative_source, method_calls, local_methods, returning_methods in file_analyses:
             filtered_calls = filter_method_calls(
                 method_calls,
                 local_methods,
                 global_project_callables,
                 verbose,
             )
-            diagram = build_puml(relative_source, filtered_calls, local_methods, theme_lines)
+            diagram = build_puml(
+                relative_source,
+                filtered_calls,
+                local_methods,
+                returning_methods,
+                theme_lines,
+                theme_name,
+            )
             destination = write_output(output_root, relative_source, diagram, file_suffix)
             print(f"Generated ({theme_name}): {destination}")
             generated += 1

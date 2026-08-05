@@ -893,65 +893,96 @@ skinparam {
 }
 
 
+skinparam rectangle<<FileLevel>> {
+  BackgroundColor #353b47
+  BorderColor #61afef
+  BorderThickness 2
+}
+skinparam rectangle<<ClassLevel>> {
+  BackgroundColor #424856
+  BorderColor #7db7ec
+  BorderThickness 1
+}
+skinparam component<<FunctionLevel>> {
+  BackgroundColor #4b5363
+  BorderColor #abb2bf
+  BorderThickness 1
+}
+
 hide stereotype
 left to right direction
 title Function Call Decomposition: decomposition-generator/generate_decomp.py
 skinparam packageStyle rectangle
 
-rectangle "generate_decomp.py" <<SRS>> as file_generate_decomp {
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.__init__()</b>" as m_1
-  component "generate_decomp.py::<b>PythonMethodCallVisitor._visit_function()</b>" as m_2
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.current_function()</b>" as m_3
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_AsyncFunctionDef()</b>" as m_4
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_Call()</b>" as m_5
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_ClassDef()</b>" as m_6
-  component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_FunctionDef()</b>" as m_7
-  component "generate_decomp.py::<b>analyze_file()</b>" as m_8
-  component "generate_decomp.py::<b>analyze_java_source()</b>" as m_9
-  component "generate_decomp.py::<b>analyze_python_source()</b>" as m_10
-  component "generate_decomp.py::<b>attribute_chain_name()</b>" as m_11
-  component "generate_decomp.py::<b>build_puml()</b>" as m_12
-  component "generate_decomp.py::<b>class_names()</b>" as m_13
-  component "generate_decomp.py::<b>collect_source_files()</b>" as m_14
-  component "generate_decomp.py::<b>extract_calls()</b>" as m_15
-  component "generate_decomp.py::<b>extract_methods()</b>" as m_16
-  component "generate_decomp.py::<b>filter_method_calls()</b>" as m_17
-  component "generate_decomp.py::<b>find_matching_brace()</b>" as m_18
-  component "generate_decomp.py::<b>is_probable_method_declaration()</b>" as m_19
-  component "generate_decomp.py::<b>load_theme_lines()</b>" as m_20
-  component "generate_decomp.py::<b>main()</b>" as m_21
-  component "generate_decomp.py::<b>sanitize_identifier()</b>" as m_22
-  component "generate_decomp.py::<b>simple_callable_name()</b>" as m_23
-  component "generate_decomp.py::<b>simple_name()</b>" as m_24
-  component "generate_decomp.py::<b>strip_comments_and_strings()</b>" as m_25
-  component "generate_decomp.py::<b>usage()</b>" as m_26
-  component "generate_decomp.py::<b>write_output()</b>" as m_27
+rectangle "generate_decomp.py" <<FileLevel>> as file_generate_decomp {
+  rectangle "PythonMethodCallVisitor" <<ClassLevel>> as cls_PythonMethodCallVisitor {
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.__init__()</b>" <<FunctionLevel>> as m_1
+    component "generate_decomp.py::<b>PythonMethodCallVisitor._function_has_value_return()</b>" <<FunctionLevel>> as m_2
+    component "generate_decomp.py::<b>PythonMethodCallVisitor._visit_function()</b>" <<FunctionLevel>> as m_3
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.current_function()</b>" <<FunctionLevel>> as m_4
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_AsyncFunctionDef()</b>" <<FunctionLevel>> as m_5
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_Call()</b>" <<FunctionLevel>> as m_6
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_ClassDef()</b>" <<FunctionLevel>> as m_7
+    component "generate_decomp.py::<b>PythonMethodCallVisitor.visit_FunctionDef()</b>" <<FunctionLevel>> as m_8
+  }
+  rectangle "_ReturnValueVisitor" <<ClassLevel>> as cls__ReturnValueVisitor {
+    component "generate_decomp.py::<b>_ReturnValueVisitor.__init__()</b>" <<FunctionLevel>> as m_9
+    component "generate_decomp.py::<b>_ReturnValueVisitor.visit_AsyncFunctionDef()</b>" <<FunctionLevel>> as m_10
+    component "generate_decomp.py::<b>_ReturnValueVisitor.visit_ClassDef()</b>" <<FunctionLevel>> as m_11
+    component "generate_decomp.py::<b>_ReturnValueVisitor.visit_FunctionDef()</b>" <<FunctionLevel>> as m_12
+    component "generate_decomp.py::<b>_ReturnValueVisitor.visit_Lambda()</b>" <<FunctionLevel>> as m_13
+    component "generate_decomp.py::<b>_ReturnValueVisitor.visit_Return()</b>" <<FunctionLevel>> as m_14
+  }
+  rectangle "Top-Level Functions" <<ClassLevel>> as globals_generate_decomp {
+    component "generate_decomp.py::<b>analyze_file()</b>" <<FunctionLevel>> as m_15
+    component "generate_decomp.py::<b>analyze_java_source()</b>" <<FunctionLevel>> as m_16
+    component "generate_decomp.py::<b>analyze_python_source()</b>" <<FunctionLevel>> as m_17
+    component "generate_decomp.py::<b>attribute_chain_name()</b>" <<FunctionLevel>> as m_18
+    component "generate_decomp.py::<b>build_puml()</b>" <<FunctionLevel>> as m_19
+    component "generate_decomp.py::<b>class_names()</b>" <<FunctionLevel>> as m_20
+    component "generate_decomp.py::<b>collect_source_files()</b>" <<FunctionLevel>> as m_21
+    component "generate_decomp.py::<b>extract_calls()</b>" <<FunctionLevel>> as m_22
+    component "generate_decomp.py::<b>extract_methods()</b>" <<FunctionLevel>> as m_23
+    component "generate_decomp.py::<b>filter_method_calls()</b>" <<FunctionLevel>> as m_24
+    component "generate_decomp.py::<b>find_matching_brace()</b>" <<FunctionLevel>> as m_25
+    component "generate_decomp.py::<b>has_java_value_return()</b>" <<FunctionLevel>> as m_26
+    component "generate_decomp.py::<b>is_probable_method_declaration()</b>" <<FunctionLevel>> as m_27
+    component "generate_decomp.py::<b>load_theme_lines()</b>" <<FunctionLevel>> as m_28
+    component "generate_decomp.py::<b>main()</b>" <<FunctionLevel>> as m_29
+    component "generate_decomp.py::<b>sanitize_identifier()</b>" <<FunctionLevel>> as m_30
+    component "generate_decomp.py::<b>simple_callable_name()</b>" <<FunctionLevel>> as m_31
+    component "generate_decomp.py::<b>simple_name()</b>" <<FunctionLevel>> as m_32
+    component "generate_decomp.py::<b>split_owner_and_method()</b>" <<FunctionLevel>> as m_33
+    component "generate_decomp.py::<b>strip_comments_and_strings()</b>" <<FunctionLevel>> as m_34
+    component "generate_decomp.py::<b>usage()</b>" <<FunctionLevel>> as m_35
+    component "generate_decomp.py::<b>write_output()</b>" <<FunctionLevel>> as m_36
+  }
 }
 
-m_4 --> m_2
+m_3 <--> m_2
 m_5 --> m_3
-m_5 --> m_23
-m_7 --> m_2
-m_8 --> m_9
-m_8 --> m_10
-m_9 --> m_25
-m_9 --> m_16
-m_9 --> m_15
-m_11 --> m_11
-m_12 --> m_22
-m_12 --> m_24
-m_16 --> m_13
-m_16 --> m_19
-m_16 --> m_18
-m_17 --> m_24
-m_21 --> m_26
-m_21 --> m_26
-m_21 --> m_26
-m_21 --> m_14
-m_21 --> m_8
-m_21 --> m_24
-m_21 --> m_20
-m_21 --> m_17
-m_21 --> m_12
-m_21 --> m_27
+m_6 <--> m_4
+m_6 <--> m_31
+m_8 --> m_3
+m_15 <--> m_16
+m_15 <--> m_17
+m_16 <--> m_34
+m_16 <--> m_23
+m_16 <--> m_22
+m_16 <--> m_26
+m_18 <--> m_18
+m_19 <--> m_30
+m_19 <--> m_33
+m_23 <--> m_20
+m_23 <--> m_27
+m_23 <--> m_25
+m_24 <--> m_32
+m_29 --> m_35
+m_29 <--> m_21
+m_29 <--> m_15
+m_29 <--> m_32
+m_29 <--> m_28
+m_29 <--> m_24
+m_29 <--> m_19
+m_29 <--> m_36
 @enduml
