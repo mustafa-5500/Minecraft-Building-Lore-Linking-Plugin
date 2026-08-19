@@ -3,6 +3,7 @@ Previous Entry: [2026-08-05](../05/dev-log.md)
 
 **Developer:**
     - Mustafa Faheem
+    - Almond (Mustafa)
 
 **Comments:**
 We moved the [Utils](../../Utils/) folder to its own git repository, since the scripts warranted their own features and git history, which would not make sense or be organized if they were added in the plugin repository.
@@ -17,11 +18,12 @@ We should probably add some sort of script which will automatically generate a t
     - ~~Make [Utils](../../Utils/) a submodule.~~
     - ~~Improve the development logging/organizing~~
 
-**ACtion:**
+**Action:**
     - ~~Move the [Utils](../../Utils/) folder into its own repository and convert it into a submodule for this repository.~~
     - ~~Split out the [Development Log](../Development%20Log/) from the [Inidividual Log](../Individual%20Log/).~~
     - ~~Rename the parent folder [Development](../../Development/) into something more meaningful, such as `Development-Notes` to make its use/functionality more known.~~
     - ~~Add a **Developer:** and **Comments:** section to the note to make it more usable and track the developer(s) working, so if the writing is not clear enough, the last developer can be contacted.~~
     - ~~Move daily notes into Month specific subfolder, to reduce clutter while maintaining the history.~~
-    - Create a script to generate a template for the day's dev-log, if it does not exist, otherwise open the day's dev-log for the developer.
+    - ~~Adjust the [commit hook](../../../../../.git/hooks/pre-commit) to the new folder structure of [Development-Notes](../../../../../Development-Notes/)~~
+    - ~~Create a script to generate a template for the day's dev-log, if it does not exist, otherwise open the day's dev-log for the developer.~~
     

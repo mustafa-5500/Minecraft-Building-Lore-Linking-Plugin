@@ -22,6 +22,12 @@ if (!hasMcServer) {
             "Set -Pmc_server_jar=/path/to/paper.jar or place paper.jar in the run/ directory to enable them.")
 }
 
+// Shadow plugin is currently commented out above (e.g. offline dev); fall back to the plain jar task.
+def hasShadowPlugin = pluginManager.hasPlugin('com.gradleup.shadow')
+if (!hasShadowPlugin) {
+    logger.lifecycle("Shadow plugin not applied; 'build' will produce the plain jar instead of a shaded jar.")
+}
+
 // ---------------------------------------------------------------------------
 // Java toolchain
 // ---------------------------------------------------------------------------
@@ -75,14 +81,16 @@ tasks.withType(JavaCompile).configureEach {
 // ---------------------------------------------------------------------------
 // Shadow JAR
 // ---------------------------------------------------------------------------
-tasks.named('shadowJar') {
-    archiveClassifier.set('')
-    mergeServiceFiles()
-}
+if (hasShadowPlugin) {
+    tasks.named('shadowJar') {
+        archiveClassifier.set('')
+        mergeServiceFiles()
+    }
 
-// Ensure the shaded jar is produced during a normal build.
-tasks.named('build') {
-    dependsOn 'shadowJar'
+    // Ensure the shaded jar is produced during a normal build.
+    tasks.named('build') {
+        dependsOn 'shadowJar'
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -90,8 +98,9 @@ tasks.named('build') {
 // ---------------------------------------------------------------------------
 if (hasMcServer) {
     tasks.register('copyToServer', Copy) {
-        dependsOn 'shadowJar'
-        from tasks.named('shadowJar').map { it.archiveFile }
+        def jarTask = hasShadowPlugin ? tasks.named('shadowJar') : tasks.named('jar')
+        dependsOn jarTask
+        from jarTask.map { it.archiveFile }
         into file("${projectDir}/run/plugins")
     }
 }
@@ -159,4 +168,27 @@ if (hasMcServer) {
             logger.lifecycle("Skipped VSCode launch configuration because no Minecraft server JAR was found.")
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Dev log
+// ---------------------------------------------------------------------------
+// Create or open today's dev log without needing dev-log on the PATH.
+// Usage: gradlew devLog [-Pdate=YYYY-MM-DD] [-Pdeveloper="Name"] [-PnoOpen]
+tasks.register('devLog', Exec) {
+    group = 'documentation'
+    description = "Create or open today's dev log entry (Utils/dev-log-generator)."
+
+    def scriptArgs = ["${projectDir}/Utils/dev-log-generator/generate_dev_log.py"]
+    if (project.hasProperty('date')) {
+        scriptArgs += ['--date', project.property('date')]
+    }
+    if (project.hasProperty('developer')) {
+        scriptArgs += ['--developer', project.property('developer')]
+    }
+    if (project.hasProperty('noOpen')) {
+        scriptArgs += ['--no-open']
+    }
+
+    commandLine(['python', *scriptArgs])
 }
